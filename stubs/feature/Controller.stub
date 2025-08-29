@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Features\{{ StudlyName }};
+
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Inertia\Inertia;
+
+class {{ StudlyName }}Controller extends Controller
+{
+    public function index()
+    {
+        return Inertia::render('Features/{{ StudlyName }}/Index', [
+            'items' => {{ StudlyName }}::latest()->paginate(10),
+        ]);
+    }
+
+    public function create()
+    {
+        return Inertia::render('Features/{{ StudlyName }}/FormPage');
+    }
+
+    public function store(Request $request)
+    {
+        // Validation will be added by sync command
+        {{ StudlyName }}::create($request->all());
+        return redirect()->route('{{ pluralKebabName }}.index')->with('message', '{{ spacedName }} created successfully.');
+    }
+
+    public function edit({{ StudlyName }} ${{ camelName }})
+    {
+        return Inertia::render('Features/{{ StudlyName }}/FormPage', [
+            'item' => ${{ camelName }},
+        ]);
+    }
+
+    public function update(Request $request, {{ StudlyName }} ${{ camelName }})
+    {
+        // Validation will be added by sync command
+        ${{ camelName }}->update($request->all());
+        return redirect()->route('{{ pluralKebabName }}.index')->with('message', '{{ spacedName }} updated successfully.');
+    }
+
+    public function destroy({{ StudlyName }} ${{ camelName }})
+    {
+        ${{ camelName }}->delete();
+        return redirect()->route('{{ pluralKebabName }}.index')->with('message', '{{ spacedName }} deleted successfully.');
+    }
+}
