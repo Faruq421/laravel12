@@ -1,0 +1,6 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Features\{{ StudlyName }}\{{ StudlyName }}Controller;
+
+Route::resource('{{ pluralKebabName }}', {{ StudlyName }}Controller::class)->middleware(['auth', 'verified']);
