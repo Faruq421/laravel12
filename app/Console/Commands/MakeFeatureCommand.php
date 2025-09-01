@@ -1,5 +1,6 @@
 <?php
-// app/Console/Commands/MakeFeatureCommand.php
+
+namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -31,7 +32,7 @@ class MakeFeatureCommand extends Command
         $this->createRoutes();
         $this->createReactComponents();
         $this->registerMenu();
-        $this->registerRouteFile();
+
 
 
         $this->info("Feature {$this->featureName} created successfully!");
@@ -42,7 +43,7 @@ class MakeFeatureCommand extends Command
     // Helper untuk mendapatkan path stub
     protected function getStub($type)
     {
-        return $this->files->get(base_path("stubs/feature/{$type}.stub"));
+        return $this->files->get(base_path("stubs/feature/{$type}"));
     }
 
     // Helper untuk membuat file dari stub
@@ -99,15 +100,21 @@ class MakeFeatureCommand extends Command
 
     protected function createRoutes()
     {
-        $path = base_path("routes/features/{$this->getNameFormats()['{{kebabName}}']}.php");
-        $this->createFileFromStub('routes.stub', $path, $this->getNameFormats());
+        // Simpan dulu format nama ke dalam variabel
+        $nameFormats = $this->getNameFormats();
+
+        // Gunakan variabel tersebut untuk membuat path
+        $kebabName = $nameFormats['{{ kebabName }}'];
+        $path = base_path("routes/features/{$kebabName}.php");
+
+        $this->createFileFromStub('routes.stub', $path, $nameFormats);
     }
 
     protected function createReactComponents()
     {
         $basePath = resource_path("js/Pages/Features/{$this->featureName}");
-        $this->createFileFromStub('react/Index.jsx.stub', "{$basePath}/Index.jsx", $this->getNameFormats());
-        $this->createFileFromStub('react/FormPage.jsx.stub', "{$basePath}/FormPage.jsx", $this->getNameFormats());
+        $this->createFileFromStub('react/Index.tsx.stub', "{$basePath}/Index.tsx", $this->getNameFormats());
+        $this->createFileFromStub('react/FormPage.tsx.stub', "{$basePath}/FormPage.tsx", $this->getNameFormats());
     }
 
     protected function registerMenu()
@@ -131,22 +138,4 @@ class MakeFeatureCommand extends Command
         }
     }
 
-    protected function registerRouteFile()
-    {
-        $routeServiceProviderPath = app_path('Providers/RouteServiceProvider.php');
-        $content = $this->files->get($routeServiceProviderPath);
-
-        $routeInclude = "\n\t\t\t\trequire base_path('routes/features/" . $this->getNameFormats()['{{kebabName}}'] . ".php');";
-
-        if (!Str::contains($content, $routeInclude)) {
-            // Cari `->group(function () {` dan tambahkan setelahnya
-            $pos = strpos($content, '->group(function () {');
-            if ($pos !== false) {
-                $insertionPoint = $pos + strlen('->group(function () {');
-                $newContent = substr_replace($content, $routeInclude, $insertionPoint, 0);
-                $this->files->put($routeServiceProviderPath, $newContent);
-                $this->line("Route file registered in RouteServiceProvider.");
-            }
-        }
-    }
 }
