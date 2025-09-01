@@ -140,41 +140,35 @@ class SyncFeatureCommand extends Command
         $path = resource_path("js/pages/Features/{$this->featureName}/Index.tsx");
         $nameFormats = $this->getNameFormats();
 
-        // Memperbarui definisi tipe TypeScript
         $tsInterfaces = $this->generateTypeScriptInterfaces($columns);
         $this->updateFileContent($path, '/\/\/ SYNC_ITEM_TYPE_START.*?\/\/ SYNC_ITEM_TYPE_END/s', "// SYNC_ITEM_TYPE_START\n{$tsInterfaces}\n    // SYNC_ITEM_TYPE_END");
 
         // Memperbarui header tabel
-        $headers = "<th className=\"px-4 py-2 w-20\">ID</th>\n";
-        $headers .= collect($columns)->map(fn($col) => "<th className=\"px-4 py-2\">" . Str::headline($col['name']) . "</th>")->implode("\n");
-        $headers .= "\n<th className=\"px-4 py-2\">Action</th>";
+        $headers = "<TableHead className=\"w-[80px]\">ID</TableHead>\n";
+        $headers .= collect($columns)->map(fn($col) => "<TableHead>" . Str::headline($col['name']) . "</TableHead>")->implode("\n");
+        $headers .= "\n<TableHead className=\"text-right\">Action</TableHead>";
         $this->updateFileContent($path, '/{\/\* SYNC_TABLE_HEADERS_START \*\/}.*?{\/\* SYNC_TABLE_HEADERS_END \*\/}/s', "{/* SYNC_TABLE_HEADERS_START */}\n{$headers}\n{/* SYNC_TABLE_HEADERS_END */}");
 
-        // Memperbarui baris data tabel dengan komponen bervariasi
-        $cells = "<td className=\"border px-4 py-2\">{ item.id }</td>\n";
+        // Memperbarui baris data tabel
+        $cells = "<TableCell className=\"font-medium\">{item.id}</TableCell>\n";
         $cells .= collect($columns)->map(function ($col) {
             $columnName = $col['name'];
 
             return match ($col['type']) {
-                'bool', 'boolean' => "<td className=\"border px-4 py-2\"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full$item.{$columnName} ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{ item.{$columnName} ? 'Active' : 'Inactive' }</span></td>",
-                'date', 'datetime', 'timestamp' => "<td className=\"border px-4 py-2\">{ new Date(item.{$columnName}).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }</td>",
-                'numeric', 'decimal' => "<td className=\"border px-4 py-2 text-right\">{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.{$columnName}) }</td>",
-                'text' => "<td className=\"border px-4 py-2\">{ item.{$columnName} ? (item.{$columnName}.substring(0, 50) + (item.{$columnName}.length > 50 ? '...' : '')) : '' }</td>",
-                default => "<td className=\"border px-4 py-2\">{ item.{$columnName} }</td>",
+                'bool', 'boolean' => "<TableCell><div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 $item.{$columnName} ?'border-transparent bg-green-600 text-secondary hover:bg-green-700': 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80'}> { item.{$columnName} ? 'Active' : 'Inactive' }</div></TableCell>",
+                'date', 'datetime', 'timestamp' => "<TableCell>{ new Date(item.{$columnName}).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }</TableCell>",
+                'numeric', 'decimal' => "<TableCell className=\"text-right\">{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.{$columnName}) }</TableCell>",
+                'text' => "<TableCell>{ item.{$columnName} ? (item.{$columnName}.substring(0, 50) + (item.{$columnName}.length > 50 ? '...' : '')) : '' }</TableCell>",
+                default => "<TableCell>{ item.{$columnName} }</TableCell>",
             };
         })->implode("\n");
 
-        // Menambahkan kembali kolom Action
         $pluralKebabName = $nameFormats['{{ pluralKebabName }}'];
-        $cells .= "\n<td className=\"border px-4 py-2\">
-                                            <Link
-                                                tabIndex={1}
-                                                className=\"px-4 py-2 text-sm text-white bg-blue-500 rounded\"
-                                                href={route('{$pluralKebabName}.edit', item.id)}
-                                            >
-                                                Edit
-                                            </Link>
-                                        </td>";
+        $cells .= "\n<TableCell className=\"text-right\">
+                                            <Button variant=\"outline\" size=\"sm\" asChild>
+                                                <Link href={route('{$pluralKebabName}.edit', item.id)}>Edit</Link>
+                                            </Button>
+                                        </TableCell>";
         $this->updateFileContent($path, '/{\/\* SYNC_TABLE_ROWS_START \*\/}.*?{\/\* SYNC_TABLE_ROWS_END \*\/}/s', "{/* SYNC_TABLE_ROWS_START */}\n{$cells}\n{/* SYNC_TABLE_ROWS_END */}");
     }
 
@@ -185,21 +179,20 @@ class SyncFeatureCommand extends Command
         $tsInterfaces = $this->generateTypeScriptInterfaces($columns);
         $this->updateFileContent($path, '/\/\/ SYNC_FORM_ITEM_TYPE_START.*?\/\/ SYNC_FORM_ITEM_TYPE_END/s', "// SYNC_FORM_ITEM_TYPE_START\n{$tsInterfaces}\n    // SYNC_FORM_ITEM_TYPE_END");
 
-        // Update useForm data types and values
         $formDataType = $this->generateTypeScriptInterfaces($columns);
         $formDataValues = collect($columns)->map(function ($col) {
-            $defaultValue = match ($col['type']) {
-                'int2', 'int4', 'int8', 'integer', 'numeric', 'decimal' => '0',
-                'bool', 'boolean' => '?? false', // Default ke false untuk item baru
-                'date', 'datetime', 'timestamp' => "|| ''",
-                default => "|| ''"
+            // Menggabungkan operator langsung ke dalam nilai default
+            $defaultValueOperator = match ($col['type']) {
+                'int2', 'int4', 'int8', 'integer', 'numeric', 'decimal', 'float4', 'float8' => '?? 0',
+                'bool', 'boolean' => '?? false',
+                default => "?? ''"
             };
-            return "        {$col['name']}: item?.{$col['name']} {$defaultValue},";
+            return "        {$col['name']}: item?.{$col['name']} {$defaultValueOperator},";
         })->implode("\n");
         $this->updateFileContent($path, '/\/\/ SYNC_FORM_DATA_START.*?\/\/ SYNC_FORM_DATA_END/s', "// SYNC_FORM_DATA_START\n    const { data, setData, post, put, processing, errors } = useForm<{\n{$formDataType}\n    }>({
 {$formDataValues}\n    });\n    // SYNC_FORM_DATA_END");
 
-        // Update Form Fields with varied components
+        // Update Form Fields
         $formFields = collect($columns)->map(function ($col) {
             $label = Str::headline($col['name']);
             $name = $col['name'];
@@ -216,48 +209,33 @@ class SyncFeatureCommand extends Command
 
             if ($inputType === 'checkbox') {
                 return <<<HTML
-                <div className="block mt-4">
-                    <label className="flex items-center">
-                        <input type="checkbox" name="{$name}" checked={data.{$name}} onChange={e => setData('{$name}', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                        <span className="ms-2 text-sm text-gray-600">{$label}</span>
-                    </label>
-                    {errors.{$name} && <div className="text-red-500 text-xs mt-1">{errors.{$name}}</div>}
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="{$name}" checked={data.{$name}} onCheckedChange={(checked) => setData('{$name}', !!checked)} />
+                    <Label htmlFor="{$name}">{$label}</Label>
+                    {errors.{$name} && <p className="text-sm text-red-500 mt-1">{errors.{$name}}</p>}
                 </div>
 HTML;
             }
 
             if ($inputType === 'textarea') {
                 return <<<HTML
-                <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="{$name}">{$label}</label>
-                    <textarea id="{$name}" value={data.{$name}} onChange={e => setData('{$name}', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
-                    {errors.{$name} && <div className="text-red-500 text-xs mt-1">{errors.{$name}}</div>}
+                <div className="space-y-2">
+                    <Label htmlFor="{$name}">{$label}</Label>
+                    <Textarea id="{$name}" value={data.{$name}} onChange={e => setData('{$name}', e.target.value)} />
+                    {errors.{$name} && <p className="text-sm text-red-500 mt-1">{errors.{$name}}</p>}
                 </div>
 HTML;
             }
 
-            // Default input text, number, date, etc.
             return <<<HTML
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="{$name}">{$label}</label>
-                <input id="{$name}" type="{$inputType}" value={data.{$name}} onChange={e => setData('{$name}', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" step="any" />
-                {errors.{$name} && <div className="text-red-500 text-xs mt-1">{errors.{$name}}</div>}
+            <div className="space-y-2">
+                <Label htmlFor="{$name}">{$label}</Label>
+                <Input id="{$name}" type="{$inputType}" value={data.{$name}} onChange={e => setData('{$name}', e.target.value)} step="any" />
+                {errors.{$name} && <p className="text-sm text-red-500 mt-1">{errors.{$name}}</p>}
             </div>
 HTML;
         })->implode("\n");
         $this->updateFileContent($path, '/{\/\* SYNC_FORM_FIELDS_START \*\/}.*?{\/\* SYNC_FORM_FIELDS_END \*\/}/s', "{/* SYNC_FORM_FIELDS_START */}\n{$formFields}\n{/* SYNC_FORM_FIELDS_END */}");
-    }
-
-    protected function generateTypeScriptInterfaces($columns)
-    {
-        return collect($columns)->map(function ($col) {
-            $tsType = match ($col['type']) {
-                'int2', 'int4', 'int8', 'integer', 'numeric', 'decimal', 'float4', 'float8' => 'number',
-                'bool', 'boolean' => 'boolean',
-                default => 'string', // varchar, text, date, timestamp, etc.
-            };
-            return "    {$col['name']}: {$tsType};";
-        })->implode("\n");
     }
 
     // Tambahkan method ini ke dalam class SyncFeatureCommand
@@ -276,5 +254,17 @@ HTML;
             '{{ spacedName }}'      => Str::headline($studly),
             '{{ pluralSpacedName }}'=> Str::headline(Str::plural($studly)),
         ];
+    }
+
+    protected function generateTypeScriptInterfaces($columns)
+    {
+        return collect($columns)->map(function ($col) {
+            $tsType = match ($col['type']) {
+                'int2', 'int4', 'int8', 'integer', 'numeric', 'decimal', 'float4', 'float8' => 'number',
+                'bool', 'boolean' => 'boolean',
+                default => 'string',
+            };
+            return "    {$col['name']}: {$tsType};";
+        })->implode("\n");
     }
 }
