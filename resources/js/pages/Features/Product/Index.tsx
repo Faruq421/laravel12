@@ -1,11 +1,15 @@
+// stubs/feature/react/Index.tsx.stub
+
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { PageProps, Pagination, BreadcrumbItem } from '@/types';
 import { route } from 'ziggy-js';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Definisikan tipe data untuk item
-interface Product {              
+interface Product {
     id: number;
     // SYNC_ITEM_TYPE_START
     name: string;
@@ -27,58 +31,51 @@ export default function Index({ auth, items }: PageProps<{ items: Pagination<Pro
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Products" />
-
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div className="p-6 bg-white border-b border-gray-200">
-                        <div className="flex items-center justify-between mb-6">
-                            <Link
-                                className="px-6 py-2 text-white bg-green-500 rounded-md focus:outline-none"
-                                href={route('products.create')}
-                            >
-                                Create Product
-                            </Link>
-                        </div>
-                        <table className="table-fixed w-full">
-                            <thead>
-                                <tr className="bg-gray-100">
+            <div className="p-4 sm:p-6 lg:p-8">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Products</CardTitle>
+                        <Button asChild>
+                            <Link href={route('products.create')}>Create Product</Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
                                     {/* SYNC_TABLE_HEADERS_START */}
-<th className="px-4 py-2 w-20">ID</th>
-<th className="px-4 py-2">Name</th>
-<th className="px-4 py-2">Description</th>
-<th className="px-4 py-2">Price</th>
-<th className="px-4 py-2">Stock</th>
-<th className="px-4 py-2">Is Published</th>
-<th className="px-4 py-2">Action</th>
+<TableHead className="w-[80px]">ID</TableHead>
+<TableHead>Name</TableHead>
+<TableHead>Description</TableHead>
+<TableHead>Price</TableHead>
+<TableHead>Stock</TableHead>
+<TableHead>Is Published</TableHead>
+<TableHead className="text-right">Action</TableHead>
 {/* SYNC_TABLE_HEADERS_END */}
-                                </tr>
-                            </thead>
-                            <tbody>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {items.data.map((item) => (
-                                    <tr key={item.id}>
+                                    <TableRow key={item.id}>
                                         {/* SYNC_TABLE_ROWS_START */}
-<td className="border px-4 py-2">{ item.id }</td>
-<td className="border px-4 py-2">{ item.name }</td>
-<td className="border px-4 py-2">{ item.description ? (item.description.substring(0, 50) + (item.description.length > 50 ? '...' : '')) : '' }</td>
-<td className="border px-4 py-2 text-right">{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price) }</td>
-<td className="border px-4 py-2">{ item.stock }</td>
-<td className="border px-4 py-2">{ item.is_published }</td>
-<td className="border px-4 py-2">
-                                            <Link
-                                                tabIndex={1}
-                                                className="px-4 py-2 text-sm text-white bg-blue-500 rounded"
-                                                href={route('products.edit', item.id)}
-                                            >
-                                                Edit
-                                            </Link>
-                                        </td>
+<TableCell className="font-medium">{item.id}</TableCell>
+<TableCell>{ item.name }</TableCell>
+<TableCell>{ item.description ? (item.description.substring(0, 50) + (item.description.length > 50 ? '...' : '')) : '' }</TableCell>
+<TableCell className="text-right">{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price) }</TableCell>
+<TableCell>{ item.stock }</TableCell>
+<TableCell>{ item.is_published }</TableCell>
+<TableCell className="text-right">
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link href={route('products.edit', item.id)}>Edit</Link>
+                                            </Button>
+                                        </TableCell>
 {/* SYNC_TABLE_ROWS_END */}
-                                    </tr>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
     );
