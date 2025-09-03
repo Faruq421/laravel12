@@ -1,6 +1,6 @@
 <?php
 
-// app/Console/Commands/SyncFeatureCommand.php
+namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -106,14 +106,13 @@ class SyncFeatureCommand extends Command
 
     protected function updateControllerValidation($columns)
     {
-        // Note: A better approach is using Form Requests, but for simplicity, we'll inject into the controller.
         $path = app_path("Features/{$this->featureName}/{$this->featureName}Controller.php");
 
         $rules = collect($columns)->map(function ($col) {
             $ruleParts = [];
             $ruleParts[] = $col['required'] ? "'required'" : "'nullable'";
             $laravelType = match ($col['type']) {
-                'int2', 'int4', 'int8', 'integer' => 'integer',
+                'int2', 'int4', 'int8', 'integer', 'tinyint' => 'integer',
                 'bool', 'boolean' => 'boolean',
                 'timestamp', 'date', 'datetime' => 'date',
                 'json', 'jsonb' => 'array',
@@ -122,100 +121,196 @@ class SyncFeatureCommand extends Command
             };
             $ruleParts[] = "'{$laravelType}'";
             if ($laravelType === 'string') $ruleParts[] = "'max:255'";
+            return "            '{$col['name']}' => [" . implode(', ', $ruleParts) . "],";
+        })->implode("\n");
 
-            return "'{$col['name']}' => [" . implode(', ', $ruleParts) . "],";
-        })->implode("\n            ");
+        $validationLogic = "\$validated = \$request->validate([\n{$rules}\n        ]);";
+        $studlyName = $this->featureName;
+        $camelName = Str::camel($this->featureName);
 
-        $validationLogic = "\$validated = \$request->validate([\n            {$rules}\n        ]);";
+        // Update Store Method using the new markers
+        $storeReplacement = "// SYNC_VALIDATION_STORE_START\n        {$validationLogic}\n        {$studlyName}::create(\$validated);\n        // SYNC_VALIDATION_STORE_END";
+        $this->updateFileContent($path, '/\/\/ SYNC_VALIDATION_STORE_START.*?\/\/ SYNC_VALIDATION_STORE_END/s', $storeReplacement);
 
-        // Update Store Method
-        $this->updateFileContent($path, "/({{ StudlyName }}::create\(\\\$request->all\(\)\);)/", "{$validationLogic}\n        {{ StudlyName }}::create(\$validated);");
-
-        // Update Update Method
-        $this->updateFileContent($path, "/(\\\${{ camelName }}->update\(\\\$request->all\(\)\);)/", "{$validationLogic}\n        \${{ camelName }}->update(\$validated);");
+        // Update Update Method using the new markers
+        $updateReplacement = "// SYNC_VALIDATION_UPDATE_START\n        {$validationLogic}\n        \${$camelName}->update(\$validated);\n        // SYNC_VALIDATION_UPDATE_END";
+        $this->updateFileContent($path, '/\/\/ SYNC_VALIDATION_UPDATE_START.*?\/\/ SYNC_VALIDATION_UPDATE_END/s', $updateReplacement);
     }
 
     protected function updateReactIndex($columns)
     {
-        $path = resource_path("js/Pages/Features/{$this->featureName}/Index.jsx");
+        $path = resource_path("js/pages/Features/{$this->featureName}/Index.tsx");
+        $nameFormats = $this->getNameFormats();
 
-        // Update Table Headers
-        $headers = "<th class=\"px-4 py-2 w-20\">ID</th>\n";
-        $headers .= collect($columns)->map(fn($col) => "<th class=\"px-4 py-2\">" . Str::headline($col['name']) . "</th>")->implode("\n");
-        $headers .= "\n<th class=\"px-4 py-2\">Action</th>";
+        $tsInterfaces = $this->generateTypeScriptInterfaces($columns);
+        $this->updateFileContent($path, '/\/\/ SYNC_ITEM_TYPE_START.*?\/\/ SYNC_ITEM_TYPE_END/s', "// SYNC_ITEM_TYPE_START\n{$tsInterfaces}\n    // SYNC_ITEM_TYPE_END");
+
+        // Memperbarui header tabel dengan tombol sort
+        $headers = "<TableHead className=\"w-[40px]\"><Checkbox /></TableHead>\n";
+        $headers .= collect($columns)->map(function($col) {
+            $columnName = $col['name'];
+            $displayName = Str::headline($columnName);
+
+            // Cek apakah kolom numerik untuk menambahkan tombol sort
+            if (in_array($col['type'], ['int', 'integer', 'tinyint', 'numeric', 'decimal', 'float'])) {
+                return <<<HTML
+<TableHead>
+                                            <Button variant="ghost" onClick={() => handleSort('{$columnName}')}>
+                                                {$displayName}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                            </Button>
+                                        </TableHead>
+HTML;
+            }
+
+            return "<TableHead>{$displayName}</TableHead>";
+
+        })->implode("\n");
+        $headers .= "\n<TableHead className=\"text-right\">Action</TableHead>";
         $this->updateFileContent($path, '/{\/\* SYNC_TABLE_HEADERS_START \*\/}.*?{\/\* SYNC_TABLE_HEADERS_END \*\/}/s', "{/* SYNC_TABLE_HEADERS_START */}\n{$headers}\n{/* SYNC_TABLE_HEADERS_END */}");
 
-        // Update Table Rows
-        $rowVars = 'id, ' . collect($columns)->pluck('name')->implode(', ');
-        $cells = "<td className=\"border px-4 py-2\">{ id }</td>\n";
+        // Memperbarui baris data tabel (tetap sama seperti sebelumnya)
+        $cells = "<TableCell><Checkbox /></TableCell>\n";
         $cells .= collect($columns)->map(function ($col) {
-            if ($col['type'] === 'bool' || $col['type'] === 'boolean') {
-                return "<td className=\"border px-4 py-2\">{ {$col['name']} ? 'Yes' : 'No' }</td>";
-            }
-            return "<td className=\"border px-4 py-2\">{ {$col['name']} }</td>";
+            $columnName = $col['name'];
+
+            return match ($col['type']) {
+                'bool', 'boolean', 'tinyint' => "<TableCell><Badge variant={item.{$columnName} ? 'success' : 'destructive'}>{ item.{$columnName} ? 'Active' : 'Inactive' }</Badge></TableCell>",
+                'date', 'datetime', 'timestamp' => "<TableCell>{ new Date(item.{$columnName}).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }</TableCell>",
+                'numeric', 'decimal' => "<TableCell className=\"text-left\">{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.{$columnName}) }</TableCell>",
+                'text' => "<TableCell>{ item.{$columnName} ? (item.{$columnName}.substring(0, 50) + (item.{$columnName}.length > 50 ? '...' : '')) : '' }</TableCell>",
+                default => "<TableCell className=\"font-medium\">{ item.{$columnName} }</TableCell>",
+            };
         })->implode("\n");
-        $this->updateFileContent($path, '/\{items\.data\.map\(\(\{.*?\}\)\s*=>\s*\(/s', "{items.data.map(({ $rowVars }) => (");
+
+        $pluralKebabName = $nameFormats['{{ pluralKebabName }}'];
+        // Menghasilkan DropdownMenu untuk kolom Aksi
+        $actionDropdown = <<<HTML
+<TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                            <span className="sr-only">Toggle menu</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={route('{$pluralKebabName}.edit', item.id)}>
+                                                                <Pencil className="mr-2 h-4 w-4"/>
+                                                                <span>Edit</span>
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-red-600" asChild>
+                                                            <Link href={route('{$pluralKebabName}.destroy', item.id)} method="delete" as="button">
+                                                                <Trash2 className="mr-2 h-4 w-4"/>
+                                                                <span>Delete</span>
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+HTML;
+        $cells .= "\n".$actionDropdown;
+
         $this->updateFileContent($path, '/{\/\* SYNC_TABLE_ROWS_START \*\/}.*?{\/\* SYNC_TABLE_ROWS_END \*\/}/s', "{/* SYNC_TABLE_ROWS_START */}\n{$cells}\n{/* SYNC_TABLE_ROWS_END */}");
     }
 
     protected function updateReactForm($columns)
     {
-        $path = resource_path("js/Pages/Features/{$this->featureName}/FormPage.jsx");
+        $path = resource_path("js/pages/Features/{$this->featureName}/FormPage.tsx");
 
-        // Update useForm data
-        $formData = collect($columns)->map(function ($col) {
-            $defaultValue = match ($col['type']) {
-                'int2', 'int4', 'int8', 'integer', 'numeric', 'decimal' => '0',
-                'bool', 'boolean' => '?? true', // Use ?? for existing items
-                default => "|| ''"
+        $tsInterfaces = $this->generateTypeScriptInterfaces($columns);
+        $this->updateFileContent($path, '/\/\/ SYNC_FORM_ITEM_TYPE_START.*?\/\/ SYNC_FORM_ITEM_TYPE_END/s', "// SYNC_FORM_ITEM_TYPE_START\n{$tsInterfaces}\n    // SYNC_FORM_ITEM_TYPE_END");
+
+        $formDataType = $this->generateTypeScriptInterfaces($columns);
+        $formDataValues = collect($columns)->map(function ($col) {
+            // Menggabungkan operator langsung ke dalam nilai default
+            $defaultValueOperator = match ($col['type']) {
+                'int2', 'int4', 'int8', 'integer', 'numeric', 'decimal', 'float4', 'float8' => '?? 0',
+                'bool', 'boolean' => '?? false',
+                default => "?? ''"
             };
-            return "{$col['name']}: item?.{$col['name']} {$defaultValue},";
-        })->implode("\n        ");
-        $this->updateFileContent($path, '/{\/\* SYNC_FORM_DATA_START \*\/}.*?{\/\* SYNC_FORM_DATA_END \*\/}/s', "{/* SYNC_FORM_DATA_START */}\n    const { data, setData, post, put, processing, errors } = useForm({\n        {$formData}\n    });\n    {/* SYNC_FORM_DATA_END */}");
+            return "        {$col['name']}: item?.{$col['name']} {$defaultValueOperator},";
+        })->implode("\n");
+        $this->updateFileContent($path, '/\/\/ SYNC_FORM_DATA_START.*?\/\/ SYNC_FORM_DATA_END/s', "// SYNC_FORM_DATA_START\n    const { data, setData, post, put, processing, errors } = useForm<{\n{$formDataType}\n    }>({
+{$formDataValues}\n    });\n    // SYNC_FORM_DATA_END");
 
         // Update Form Fields
         $formFields = collect($columns)->map(function ($col) {
             $label = Str::headline($col['name']);
+            $name = $col['name'];
+
             $inputType = match ($col['type']) {
+                'text' => 'textarea',
+                'bool', 'boolean', 'tinyint' => 'checkbox',
+                'date' => 'date',
+                'datetime', 'timestamp' => 'datetime-local',
                 'int2', 'int4', 'int8', 'integer' => 'number',
                 'float4', 'float8', 'numeric', 'decimal' => 'number',
-                'date', 'datetime', 'timestamp' => 'date',
-                'text' => 'textarea',
-                'bool', 'boolean' => 'select',
                 default => 'text'
             };
 
-            if ($inputType === 'select') {
+            if ($inputType === 'checkbox') {
                 return <<<HTML
-                <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="{$col['name']}">{$label}</label>
-                    <select id="{$col['name']}" value={data.{$col['name']}} onChange={e => setData('{$col['name']}', e.target.value === 'true')} className="shadow border rounded w-full py-2 px-3">
-                        <option value={true}>Yes</option>
-                        <option value={false}>No</option>
-                    </select>
-                    {errors.{$col['name']} && <div className="text-red-500 text-xs mt-1">{errors.{$col['name']}}</div>}
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="{$name}" checked={data.{$name}} onCheckedChange={(checked) => setData('{$name}', !!checked)} />
+                    <Label htmlFor="{$name}">{$label}</Label>
+                    {errors.{$name} && <p className="text-sm text-red-500 mt-1">{errors.{$name}}</p>}
                 </div>
-                HTML;
+HTML;
             }
 
             if ($inputType === 'textarea') {
                 return <<<HTML
-                <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="{$col['name']}">{$label}</label>
-                    <textarea id="{$col['name']}" value={data.{$col['name']}} onChange={e => setData('{$col['name']}', e.target.value)} className="shadow border rounded w-full py-2 px-3"></textarea>
-                    {errors.{$col['name']} && <div className="text-red-500 text-xs mt-1">{errors.{$col['name']}}</div>}
+                <div className="space-y-2">
+                    <Label htmlFor="{$name}">{$label}</Label>
+                    <Textarea id="{$name}" value={data.{$name}} onChange={e => setData('{$name}', e.target.value)} />
+                    {errors.{$name} && <p className="text-sm text-red-500 mt-1">{errors.{$name}}</p>}
                 </div>
-                HTML;
+HTML;
             }
 
             return <<<HTML
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="{$col['name']}">{$label}</label>
-                <input id="{$col['name']}" type="{$inputType}" value={data.{$col['name']}} onChange={e => setData('{$col['name']}', e.target.value)} className="shadow border rounded w-full py-2 px-3" />
-                {errors.{$col['name']} && <div className="text-red-500 text-xs mt-1">{errors.{$col['name']}}</div>}
+            <div className="space-y-2">
+                <Label htmlFor="{$name}">{$label}</Label>
+                <Input id="{$name}" type="{$inputType}" value={data.{$name}} onChange={e => setData('{$name}', e.target.value)} step="any" />
+                {errors.{$name} && <p className="text-sm text-red-500 mt-1">{errors.{$name}}</p>}
             </div>
-            HTML;
+HTML;
         })->implode("\n");
         $this->updateFileContent($path, '/{\/\* SYNC_FORM_FIELDS_START \*\/}.*?{\/\* SYNC_FORM_FIELDS_END \*\/}/s', "{/* SYNC_FORM_FIELDS_START */}\n{$formFields}\n{/* SYNC_FORM_FIELDS_END */}");
+    }
+
+    // Tambahkan method ini ke dalam class SyncFeatureCommand
+
+    protected function getNameFormats()
+    {
+        $studly = $this->featureName;
+        return [
+            '{{ StudlyName }}'      => $studly,
+            '{{ camelName }}'       => Str::camel($studly),
+            '{{ pluralCamelName }}' => Str::camel(Str::plural($studly)),
+            '{{ kebabName }}'       => Str::kebab($studly),
+            '{{ pluralKebabName }}' => Str::kebab(Str::plural($studly)),
+            '{{ snakeName }}'       => Str::snake($studly),
+            '{{ pluralSnakeName }}' => Str::snake(Str::plural($studly)),
+            '{{ spacedName }}'      => Str::headline($studly),
+            '{{ pluralSpacedName }}'=> Str::headline(Str::plural($studly)),
+            '{{ lowerPluralSpacedName }}' => Str::lower(Str::headline(Str::plural($studly))),
+        ];
+    }
+
+    protected function generateTypeScriptInterfaces($columns)
+    {
+        return collect($columns)->map(function ($col) {
+            $tsType = match ($col['type']) {
+                'int2', 'int4', 'int8', 'integer', 'numeric', 'decimal', 'float4', 'float8' => 'number',
+                'bool', 'boolean' => 'boolean',
+                default => 'string',
+            };
+            return "    {$col['name']}: {$tsType};";
+        })->implode("\n");
     }
 }

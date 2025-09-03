@@ -1,5 +1,6 @@
 <?php
-// app/Console/Commands/MakeFeatureCommand.php
+
+namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -31,7 +32,7 @@ class MakeFeatureCommand extends Command
         $this->createRoutes();
         $this->createReactComponents();
         $this->registerMenu();
-        $this->registerRouteFile();
+
 
 
         $this->info("Feature {$this->featureName} created successfully!");
@@ -42,7 +43,7 @@ class MakeFeatureCommand extends Command
     // Helper untuk mendapatkan path stub
     protected function getStub($type)
     {
-        return $this->files->get(base_path("stubs/feature/{$type}.stub"));
+        return $this->files->get(base_path("stubs/feature/{$type}"));
     }
 
     // Helper untuk membuat file dari stub
@@ -74,6 +75,7 @@ class MakeFeatureCommand extends Command
             '{{ pluralSnakeName }}' => Str::snake(Str::plural($studly)), // product_categories
             '{{ spacedName }}'      => Str::headline($studly), // Product Category
             '{{ pluralSpacedName }}' => Str::headline(Str::plural($studly)), // Product Categories
+            '{{ lowerPluralSpacedName }}' => Str::lower(Str::headline(Str::plural($studly))),
         ];
     }
 
@@ -99,54 +101,61 @@ class MakeFeatureCommand extends Command
 
     protected function createRoutes()
     {
-        $path = base_path("routes/features/{$this->getNameFormats()['{{kebabName}}']}.php");
-        $this->createFileFromStub('routes.stub', $path, $this->getNameFormats());
+        // Simpan dulu format nama ke dalam variabel
+        $nameFormats = $this->getNameFormats();
+
+        // Gunakan variabel tersebut untuk membuat path
+        $kebabName = $nameFormats['{{ kebabName }}'];
+        $path = base_path("routes/features/{$kebabName}.php");
+
+        $this->createFileFromStub('routes.stub', $path, $nameFormats);
     }
 
     protected function createReactComponents()
     {
         $basePath = resource_path("js/Pages/Features/{$this->featureName}");
-        $this->createFileFromStub('react/Index.jsx.stub', "{$basePath}/Index.jsx", $this->getNameFormats());
-        $this->createFileFromStub('react/FormPage.jsx.stub', "{$basePath}/FormPage.jsx", $this->getNameFormats());
+        $this->createFileFromStub('react/Index.tsx.stub', "{$basePath}/Index.tsx", $this->getNameFormats());
+        $this->createFileFromStub('react/FormPage.tsx.stub', "{$basePath}/FormPage.tsx", $this->getNameFormats());
     }
 
     protected function registerMenu()
     {
-        // Asumsi ada file config/menu.php untuk mendaftarkan menu sidebar
-        $menuConfigPath = config_path('menu.php');
-        if ($this->files->exists($menuConfigPath)) {
-            $content = $this->files->get($menuConfigPath);
-            $menuEntry = "\n    ['label' => '{{ spacedName }}', 'route' => '{{ pluralKebabName }}.index'],";
-            $menuEntry = str_replace(array_keys($this->getNameFormats()), array_values($this->getNameFormats()), $menuEntry);
+        // Path menargetkan file TypeScript navigasi Anda
+        $navConfigPath = resource_path('js/lib/navigation.ts');
 
-            // Cari posisi sebelum '];' terakhir dan sisipkan
-            $pos = strrpos($content, '];');
-            if ($pos !== false) {
-                $newContent = substr_replace($content, $menuEntry, $pos, 0);
-                $this->files->put($menuConfigPath, $newContent);
-                $this->line("Menu registered in config/menu.php");
-            }
-        } else {
-            $this->warn("config/menu.php not found. Skipping menu registration.");
+        if (!$this->files->exists($navConfigPath)) {
+            $this->warn("{$navConfigPath} not found. Skipping menu registration.");
+            return;
         }
-    }
 
-    protected function registerRouteFile()
+        // Template untuk item menu baru yang akan dibuat
+        // Menggunakan ikon 'Package' dari lucide-react sebagai default
+        $newMenuItem = <<<TS
     {
-        $routeServiceProviderPath = app_path('Providers/RouteServiceProvider.php');
-        $content = $this->files->get($routeServiceProviderPath);
+        title: '{{ pluralSpacedName }}',
+        href: route('{{ pluralKebabName }}.index', undefined, false),
+        icon: Package,
+    },
+    // LINK BARU AKAN DITAMBAHKAN SECARA OTOMATIS DI SINI
+TS;
+        // Mengganti placeholder di template dengan nilai yang benar
+        $newMenuItem = str_replace(
+            array_keys($this->getNameFormats()),
+            array_values($this->getNameFormats()),
+            $newMenuItem
+        );
 
-        $routeInclude = "\n\t\t\t\trequire base_path('routes/features/" . $this->getNameFormats()['{{kebabName}}'] . ".php');";
+        $content = $this->files->get($navConfigPath);
 
-        if (!Str::contains($content, $routeInclude)) {
-            // Cari `->group(function () {` dan tambahkan setelahnya
-            $pos = strpos($content, '->group(function () {');
-            if ($pos !== false) {
-                $insertionPoint = $pos + strlen('->group(function () {');
-                $newContent = substr_replace($content, $routeInclude, $insertionPoint, 0);
-                $this->files->put($routeServiceProviderPath, $newContent);
-                $this->line("Route file registered in RouteServiceProvider.");
-            }
+        // Cari komentar penanda untuk menyisipkan item menu baru
+        $placeholder = "// LINK BARU AKAN DITAMBAHKAN SECARA OTOMATIS DI SINI";
+
+        if (Str::contains($content, $placeholder)) {
+            $newContent = str_replace($placeholder, $newMenuItem, $content);
+            $this->files->put($navConfigPath, $newContent);
+            $this->line("Menu item for '{$this->getNameFormats()['{{ pluralSpacedName }}']}' registered in {$navConfigPath}");
+        } else {
+            $this->warn("Placeholder for new links not found in {$navConfigPath}. Skipping.");
         }
     }
 }

@@ -40,3 +40,28 @@ export interface User {
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
 }
+
+export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {
+    auth: Auth;
+};
+
+/**
+ * Mendefinisikan struktur objek Paginasi dari Laravel.
+ * 'T' adalah placeholder untuk tipe data yang dipaginasi (misal: Product, User, dll).
+ */
+export interface Pagination<T> {
+    data: T[];
+    from: number;
+    to: number;
+    total: number;
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    prev_page_url: string | null;
+    next_page_url: string | null;
+    links: {
+        url: string | null;
+        label: string;
+        active: boolean;
+    }[];
+}

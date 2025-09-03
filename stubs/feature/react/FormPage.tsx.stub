@@ -1,0 +1,89 @@
+// stubs/feature/react/FormPage.tsx.stub
+
+import React from 'react';
+import { Head, useForm, Link } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import { PageProps, BreadcrumbItem } from '@/types';
+import { route } from 'ziggy-js';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+
+interface {{ StudlyName }} {
+    id: number;
+    // SYNC_FORM_ITEM_TYPE_START
+    name: string;
+    status: boolean;
+    // SYNC_FORM_ITEM_TYPE_END
+}
+
+export default function FormPage({ auth, item }: PageProps<{ item?: {{ StudlyName }} }>) {
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: '{{ pluralSpacedName }}',
+            href: route('{{ pluralKebabName }}.index'),
+        },
+        {
+            title: item ? 'Edit' : 'Create',
+            href: item ? route('{{ pluralKebabName }}.edit', item.id) : route('{{ pluralKebabName }}.create'),
+        },
+    ];
+
+    // SYNC_FORM_DATA_START
+    const { data, setData, post, put, processing, errors } = useForm<{
+        name: string;
+        status: boolean;
+    }>({
+        name: item?.name || '',
+        status: item?.status ?? false,
+    });
+    // SYNC_FORM_DATA_END
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (item) {
+            put(route('{{ pluralKebabName }}.update', item.id));
+        } else {
+            post(route('{{ pluralKebabName }}.store'));
+        }
+    }
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title={(item ? 'Edit' : 'Create') + ' {{ spacedName }}'} />
+
+            <div className="p-4 sm:p-6 lg:p-8">
+                <form onSubmit={handleSubmit}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{item ? 'Edit' : 'Create'} {{ spacedName }}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* SYNC_FORM_FIELDS_START */}
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Name</Label>
+                                <Input id="name" value={data.name} onChange={(e) => setData('name', e.target.value)} />
+                                {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="status" checked={data.status} onCheckedChange={(checked) => setData('status', !!checked)} />
+                                <Label htmlFor="status">Status</Label>
+                            </div>
+                            {/* SYNC_FORM_FIELDS_END */}
+                        </CardContent>
+                        <CardFooter className="flex justify-end gap-2">
+                            <Link href={route('{{ pluralKebabName }}.index')} className={cn(buttonVariants({ variant: 'ghost' }))}>Cancel</Link>
+                            <Button type="submit" disabled={processing}>{item ? 'Update' : 'Create'}</Button>
+                        </CardFooter>
+                    </Card>
+                </form>
+            </div>
+        </AppLayout>
+    );
+}
