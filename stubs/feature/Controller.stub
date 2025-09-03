@@ -8,10 +8,35 @@ use Inertia\Inertia;
 
 class {{ StudlyName }}Controller extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Ambil semua kolom dari model kecuali yang tersembunyi
+        $model = new {{ StudlyName }};
+        $columns = array_diff($model->getConnection()->getSchemaBuilder()->getColumnListing($model->getTable()), $model->getHidden());
+
+        $query = {{ StudlyName }}::query();
+
+        // Logika untuk Pencarian (Search) di semua kolom
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request, $columns) {
+                foreach ($columns as $column) {
+                    $q->orWhere($column, 'like', '%' . $request->search . '%');
+                }
+            });
+        }
+
+        // Logika untuk Pengurutan (Sort)
+        if ($request->filled('sort_by') && $request->filled('sort_dir')) {
+            $query->orderBy($request->sort_by, $request->sort_dir);
+        } else {
+            $query->latest(); // Urutan default jika tidak ada sort
+        }
+
         return Inertia::render('Features/{{ StudlyName }}/Index', [
-            'items' => {{ StudlyName }}::latest()->paginate(10),
+            // Kirim data yang sudah difilter dan diurutkan
+            'items' => $query->paginate(10)->withQueryString(),
+            // Kirim kembali filter yang sedang aktif ke view
+            'filters' => $request->only(['search', 'sort_by', 'sort_dir']),
         ]);
     }
 
@@ -22,8 +47,9 @@ class {{ StudlyName }}Controller extends Controller
 
     public function store(Request $request)
     {
-        // Validation will be added by sync command
+        // SYNC_VALIDATION_STORE_START
         {{ StudlyName }}::create($request->all());
+        // SYNC_VALIDATION_STORE_END
         return redirect()->route('{{ pluralKebabName }}.index')->with('message', '{{ spacedName }} created successfully.');
     }
 
@@ -36,8 +62,9 @@ class {{ StudlyName }}Controller extends Controller
 
     public function update(Request $request, {{ StudlyName }} ${{ camelName }})
     {
-        // Validation will be added by sync command
+        // SYNC_VALIDATION_UPDATE_START
         ${{ camelName }}->update($request->all());
+        // SYNC_VALIDATION_UPDATE_END
         return redirect()->route('{{ pluralKebabName }}.index')->with('message', '{{ spacedName }} updated successfully.');
     }
 
