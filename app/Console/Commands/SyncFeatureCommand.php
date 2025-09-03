@@ -106,14 +106,13 @@ class SyncFeatureCommand extends Command
 
     protected function updateControllerValidation($columns)
     {
-        // Note: A better approach is using Form Requests, but for simplicity, we'll inject into the controller.
         $path = app_path("Features/{$this->featureName}/{$this->featureName}Controller.php");
 
         $rules = collect($columns)->map(function ($col) {
             $ruleParts = [];
             $ruleParts[] = $col['required'] ? "'required'" : "'nullable'";
             $laravelType = match ($col['type']) {
-                'int2', 'int4', 'int8', 'integer' => 'integer',
+                'int2', 'int4', 'int8', 'integer', 'tinyint' => 'integer',
                 'bool', 'boolean' => 'boolean',
                 'timestamp', 'date', 'datetime' => 'date',
                 'json', 'jsonb' => 'array',
@@ -122,17 +121,20 @@ class SyncFeatureCommand extends Command
             };
             $ruleParts[] = "'{$laravelType}'";
             if ($laravelType === 'string') $ruleParts[] = "'max:255'";
+            return "            '{$col['name']}' => [" . implode(', ', $ruleParts) . "],";
+        })->implode("\n");
 
-            return "'{$col['name']}' => [" . implode(', ', $ruleParts) . "],";
-        })->implode("\n            ");
+        $validationLogic = "\$validated = \$request->validate([\n{$rules}\n        ]);";
+        $studlyName = $this->featureName;
+        $camelName = Str::camel($this->featureName);
 
-        $validationLogic = "\$validated = \$request->validate([\n            {$rules}\n        ]);";
+        // Update Store Method using the new markers
+        $storeReplacement = "// SYNC_VALIDATION_STORE_START\n        {$validationLogic}\n        {$studlyName}::create(\$validated);\n        // SYNC_VALIDATION_STORE_END";
+        $this->updateFileContent($path, '/\/\/ SYNC_VALIDATION_STORE_START.*?\/\/ SYNC_VALIDATION_STORE_END/s', $storeReplacement);
 
-        // Update Store Method
-        $this->updateFileContent($path, "/({{ StudlyName }}::create\(\\\$request->all\(\)\);)/", "{$validationLogic}\n        {{ StudlyName }}::create(\$validated);");
-
-        // Update Update Method
-        $this->updateFileContent($path, "/(\\\${{ camelName }}->update\(\\\$request->all\(\)\);)/", "{$validationLogic}\n        \${{ camelName }}->update(\$validated);");
+        // Update Update Method using the new markers
+        $updateReplacement = "// SYNC_VALIDATION_UPDATE_START\n        {$validationLogic}\n        \${$camelName}->update(\$validated);\n        // SYNC_VALIDATION_UPDATE_END";
+        $this->updateFileContent($path, '/\/\/ SYNC_VALIDATION_UPDATE_START.*?\/\/ SYNC_VALIDATION_UPDATE_END/s', $updateReplacement);
     }
 
     protected function updateReactIndex($columns)
@@ -143,32 +145,75 @@ class SyncFeatureCommand extends Command
         $tsInterfaces = $this->generateTypeScriptInterfaces($columns);
         $this->updateFileContent($path, '/\/\/ SYNC_ITEM_TYPE_START.*?\/\/ SYNC_ITEM_TYPE_END/s', "// SYNC_ITEM_TYPE_START\n{$tsInterfaces}\n    // SYNC_ITEM_TYPE_END");
 
-        // Memperbarui header tabel
-        $headers = "<TableHead className=\"w-[80px]\">ID</TableHead>\n";
-        $headers .= collect($columns)->map(fn($col) => "<TableHead>" . Str::headline($col['name']) . "</TableHead>")->implode("\n");
+        // Memperbarui header tabel dengan tombol sort
+        $headers = "<TableHead className=\"w-[40px]\"><Checkbox /></TableHead>\n";
+        $headers .= collect($columns)->map(function($col) {
+            $columnName = $col['name'];
+            $displayName = Str::headline($columnName);
+
+            // Cek apakah kolom numerik untuk menambahkan tombol sort
+            if (in_array($col['type'], ['int', 'integer', 'tinyint', 'numeric', 'decimal', 'float'])) {
+                return <<<HTML
+<TableHead>
+                                            <Button variant="ghost" onClick={() => handleSort('{$columnName}')}>
+                                                {$displayName}
+                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                            </Button>
+                                        </TableHead>
+HTML;
+            }
+
+            return "<TableHead>{$displayName}</TableHead>";
+
+        })->implode("\n");
         $headers .= "\n<TableHead className=\"text-right\">Action</TableHead>";
         $this->updateFileContent($path, '/{\/\* SYNC_TABLE_HEADERS_START \*\/}.*?{\/\* SYNC_TABLE_HEADERS_END \*\/}/s', "{/* SYNC_TABLE_HEADERS_START */}\n{$headers}\n{/* SYNC_TABLE_HEADERS_END */}");
 
-        // Memperbarui baris data tabel
-        $cells = "<TableCell className=\"font-medium\">{item.id}</TableCell>\n";
+        // Memperbarui baris data tabel (tetap sama seperti sebelumnya)
+        $cells = "<TableCell><Checkbox /></TableCell>\n";
         $cells .= collect($columns)->map(function ($col) {
             $columnName = $col['name'];
 
             return match ($col['type']) {
-                'bool', 'boolean' => "<TableCell><div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 $item.{$columnName} ?'border-transparent bg-green-600 text-secondary hover:bg-green-700': 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80'}> { item.{$columnName} ? 'Active' : 'Inactive' }</div></TableCell>",
+                'bool', 'boolean', 'tinyint' => "<TableCell><Badge variant={item.{$columnName} ? 'success' : 'destructive'}>{ item.{$columnName} ? 'Active' : 'Inactive' }</Badge></TableCell>",
                 'date', 'datetime', 'timestamp' => "<TableCell>{ new Date(item.{$columnName}).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) }</TableCell>",
-                'numeric', 'decimal' => "<TableCell className=\"text-right\">{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.{$columnName}) }</TableCell>",
+                'numeric', 'decimal' => "<TableCell className=\"text-left\">{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.{$columnName}) }</TableCell>",
                 'text' => "<TableCell>{ item.{$columnName} ? (item.{$columnName}.substring(0, 50) + (item.{$columnName}.length > 50 ? '...' : '')) : '' }</TableCell>",
-                default => "<TableCell>{ item.{$columnName} }</TableCell>",
+                default => "<TableCell className=\"font-medium\">{ item.{$columnName} }</TableCell>",
             };
         })->implode("\n");
 
         $pluralKebabName = $nameFormats['{{ pluralKebabName }}'];
-        $cells .= "\n<TableCell className=\"text-right\">
-                                            <Button variant=\"outline\" size=\"sm\" asChild>
-                                                <Link href={route('{$pluralKebabName}.edit', item.id)}>Edit</Link>
-                                            </Button>
-                                        </TableCell>";
+        // Menghasilkan DropdownMenu untuk kolom Aksi
+        $actionDropdown = <<<HTML
+<TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                            <span className="sr-only">Toggle menu</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={route('{$pluralKebabName}.edit', item.id)}>
+                                                                <Pencil className="mr-2 h-4 w-4"/>
+                                                                <span>Edit</span>
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-red-600" asChild>
+                                                            <Link href={route('{$pluralKebabName}.destroy', item.id)} method="delete" as="button">
+                                                                <Trash2 className="mr-2 h-4 w-4"/>
+                                                                <span>Delete</span>
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+HTML;
+        $cells .= "\n".$actionDropdown;
+
         $this->updateFileContent($path, '/{\/\* SYNC_TABLE_ROWS_START \*\/}.*?{\/\* SYNC_TABLE_ROWS_END \*\/}/s', "{/* SYNC_TABLE_ROWS_START */}\n{$cells}\n{/* SYNC_TABLE_ROWS_END */}");
     }
 
@@ -199,7 +244,7 @@ class SyncFeatureCommand extends Command
 
             $inputType = match ($col['type']) {
                 'text' => 'textarea',
-                'bool', 'boolean' => 'checkbox',
+                'bool', 'boolean', 'tinyint' => 'checkbox',
                 'date' => 'date',
                 'datetime', 'timestamp' => 'datetime-local',
                 'int2', 'int4', 'int8', 'integer' => 'number',
@@ -253,6 +298,7 @@ HTML;
             '{{ pluralSnakeName }}' => Str::snake(Str::plural($studly)),
             '{{ spacedName }}'      => Str::headline($studly),
             '{{ pluralSpacedName }}'=> Str::headline(Str::plural($studly)),
+            '{{ lowerPluralSpacedName }}' => Str::lower(Str::headline(Str::plural($studly))),
         ];
     }
 

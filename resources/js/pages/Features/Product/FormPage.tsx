@@ -95,11 +95,11 @@ export default function FormPage({ auth, item }: PageProps<{ item?: Product }>) 
                 <Input id="stock" type="text" value={data.stock} onChange={e => setData('stock', e.target.value)} step="any" />
                 {errors.stock && <p className="text-sm text-red-500 mt-1">{errors.stock}</p>}
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="is_published">Is Published</Label>
-                <Input id="is_published" type="text" value={data.is_published} onChange={e => setData('is_published', e.target.value)} step="any" />
-                {errors.is_published && <p className="text-sm text-red-500 mt-1">{errors.is_published}</p>}
-            </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="is_published" checked={data.is_published} onCheckedChange={(checked) => setData('is_published', !!checked)} />
+                    <Label htmlFor="is_published">Is Published</Label>
+                    {errors.is_published && <p className="text-sm text-red-500 mt-1">{errors.is_published}</p>}
+                </div>
 {/* SYNC_FORM_FIELDS_END */}
                         </CardContent>
                         <CardFooter className="flex justify-end gap-2">

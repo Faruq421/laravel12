@@ -75,6 +75,7 @@ class MakeFeatureCommand extends Command
             '{{ pluralSnakeName }}' => Str::snake(Str::plural($studly)), // product_categories
             '{{ spacedName }}'      => Str::headline($studly), // Product Category
             '{{ pluralSpacedName }}' => Str::headline(Str::plural($studly)), // Product Categories
+            '{{ lowerPluralSpacedName }}' => Str::lower(Str::headline(Str::plural($studly))),
         ];
     }
 
@@ -119,23 +120,42 @@ class MakeFeatureCommand extends Command
 
     protected function registerMenu()
     {
-        // Asumsi ada file config/menu.php untuk mendaftarkan menu sidebar
-        $menuConfigPath = config_path('menu.php');
-        if ($this->files->exists($menuConfigPath)) {
-            $content = $this->files->get($menuConfigPath);
-            $menuEntry = "\n    ['label' => '{{ spacedName }}', 'route' => '{{ pluralKebabName }}.index'],";
-            $menuEntry = str_replace(array_keys($this->getNameFormats()), array_values($this->getNameFormats()), $menuEntry);
+        // Path menargetkan file TypeScript navigasi Anda
+        $navConfigPath = resource_path('js/lib/navigation.ts');
 
-            // Cari posisi sebelum '];' terakhir dan sisipkan
-            $pos = strrpos($content, '];');
-            if ($pos !== false) {
-                $newContent = substr_replace($content, $menuEntry, $pos, 0);
-                $this->files->put($menuConfigPath, $newContent);
-                $this->line("Menu registered in config/menu.php");
-            }
+        if (!$this->files->exists($navConfigPath)) {
+            $this->warn("{$navConfigPath} not found. Skipping menu registration.");
+            return;
+        }
+
+        // Template untuk item menu baru yang akan dibuat
+        // Menggunakan ikon 'Package' dari lucide-react sebagai default
+        $newMenuItem = <<<TS
+    {
+        title: '{{ pluralSpacedName }}',
+        href: route('{{ pluralKebabName }}.index', undefined, false),
+        icon: Package,
+    },
+    // LINK BARU AKAN DITAMBAHKAN SECARA OTOMATIS DI SINI
+TS;
+        // Mengganti placeholder di template dengan nilai yang benar
+        $newMenuItem = str_replace(
+            array_keys($this->getNameFormats()),
+            array_values($this->getNameFormats()),
+            $newMenuItem
+        );
+
+        $content = $this->files->get($navConfigPath);
+
+        // Cari komentar penanda untuk menyisipkan item menu baru
+        $placeholder = "// LINK BARU AKAN DITAMBAHKAN SECARA OTOMATIS DI SINI";
+
+        if (Str::contains($content, $placeholder)) {
+            $newContent = str_replace($placeholder, $newMenuItem, $content);
+            $this->files->put($navConfigPath, $newContent);
+            $this->line("Menu item for '{$this->getNameFormats()['{{ pluralSpacedName }}']}' registered in {$navConfigPath}");
         } else {
-            $this->warn("config/menu.php not found. Skipping menu registration.");
+            $this->warn("Placeholder for new links not found in {$navConfigPath}. Skipping.");
         }
     }
-
 }
