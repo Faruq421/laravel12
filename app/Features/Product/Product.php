@@ -2,6 +2,7 @@
 
 namespace App\Features\Product;
 
+use App\Features\Product\Category;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -9,29 +10,39 @@ class Product extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
-    // SYNC_FILLABLE_START
+    protected $primaryKey = 'id_produk';
+
     protected $fillable = [
-        'name',
-        'description',
-        'price',
-        'stock',
-        'is_published'
+        'nama_produk',
+        'deskripsi',
+        'harga',
+        'stok',
+        'gambar',
+        'category_id',
+        'status',
     ];
-    // SYNC_FILLABLE_END
+
+    protected $casts = [
+        'status' => 'boolean',
+    ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    // ... (kode lainnya di Product.php)
 
     /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
+     * Relasi Many-to-Many ke AttributeValue melalui tabel pivot.
      */
-    // SYNC_CASTS_START
-    protected $casts = [
-        'price' => 'decimal:2',
-    ];
-    // SYNC_CASTS_END
+    public function attributeValues()
+    {
+        return $this->belongsToMany(
+            AttributeValue::class,
+            'product_attribute_value',
+            'product_id_produk',
+            'attribute_value_id'
+        )->withPivot('price'); // <-- TAMBAHKAN BARIS INI
+    }
 }
