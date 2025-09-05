@@ -14,5 +14,10 @@ export const mainNavItems: NavItem[] = [
         href: route('products.index', undefined, false),
         icon: Package,
     },
+        {
+        title: 'Customers',
+        href: route('customers.index', undefined, false),
+        icon: Package,
+    },
     // LINK BARU AKAN DITAMBAHKAN SECARA OTOMATIS DI SINI
 ];

@@ -7,10 +7,16 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+});
+
+Route::middleware(['auth', 'verified', 'role:customer'])->group(function () {
+    Route::get('/coba', function () {
+        return Inertia::render('Customer/coba');
+    })->name('coba');
 });
 
 require __DIR__.'/settings.php';
