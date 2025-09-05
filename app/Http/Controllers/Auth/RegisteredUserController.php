@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Features\Customer\Customer;
 
 class RegisteredUserController extends Controller
 {
@@ -42,10 +43,13 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        $user->customer()->create();
+
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect('/');
+        //->intended(route('dashboard', absolute: false));
     }
 }
