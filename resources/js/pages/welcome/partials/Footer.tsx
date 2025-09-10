@@ -9,23 +9,23 @@ export default function Footer() {
             <div className="container mx-auto px-6 py-12">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                     <div>
-                        <h3 className="font-bold text-lg">PrintShop</h3>
+                        <h3 className="font-bold text-lg text-white">PrintShop</h3>
                         <p className="mt-4 text-gray-400">Your one-stop shop for all printing needs.</p>
                     </div>
                     <div>
                         <h3 className="font-semibold">Quick Links</h3>
                         <ul className="mt-4 space-y-2">
-                            <li><Link href="#" className="text-gray-400 hover:text-white">About Us</Link></li>
-                            <li><Link href="#" className="text-gray-400 hover:text-white">Contact</Link></li>
-                            <li><Link href="#" className="text-gray-400 hover:text-white">FAQ</Link></li>
+                            <li><Link href="#" className="text-gray-400 hover:text-[#FFC100]">About Us</Link></li>
+                            <li><Link href="#" className="text-gray-400 hover:text-[#FFC100]">Contact</Link></li>
+                            <li><Link href="#" className="text-gray-400 hover:text-[#FFC100]">FAQ</Link></li>
                         </ul>
                     </div>
                     <div>
                         <h3 className="font-semibold">Shop</h3>
                         <ul className="mt-4 space-y-2">
-                            <li><Link href="#" className="text-gray-400 hover:text-white">Printers</Link></li>
-                            <li><Link href="#" className="text-gray-400 hover:text-white">Inks & Cartridges</Link></li>
-                            <li><Link href="#" className="text-gray-400 hover:text-white">Paper</Link></li>
+                            <li><Link href="#" className="text-gray-400 hover:text-[#FFC100]">Printers</Link></li>
+                            <li><Link href="#" className="text-gray-400 hover:text-[#FFC100]">Inks & Cartridges</Link></li>
+                            <li><Link href="#" className="text-gray-400 hover:text-[#FFC100]">Paper</Link></li>
                         </ul>
                     </div>
                     <div>
@@ -33,7 +33,7 @@ export default function Footer() {
                         <p className="mt-4 text-gray-400">Get the latest updates and offers.</p>
                         <div className="mt-4 flex">
                             <Input type="email" placeholder="Your email" className="bg-gray-700 border-gray-600 text-white rounded-r-none" />
-                            <Button className="bg-blue-600 hover:bg-blue-700 rounded-l-none">Subscribe</Button>
+                            <Button className="bg-[#FF6500] hover:bg-[#C40C0C] text-white rounded-l-none">Subscribe</Button>
                         </div>
                     </div>
                 </div>
@@ -44,3 +44,4 @@ export default function Footer() {
         </footer>
     );
 }
+
