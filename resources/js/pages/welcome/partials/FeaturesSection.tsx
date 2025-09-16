@@ -11,7 +11,7 @@ const features = [
 export default function FeaturesSection({ isInView }: { isInView: boolean }) {
     return (
         <section className={`bg-white transition-all duration-1000 ease-out ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="container mx-auto px-6 py-12 border-t border-b">
+            <div className="container mx-auto px-6 py-12 ">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
                     {features.map((feature, index) => (
                         <div key={index} className="flex flex-col items-center">
