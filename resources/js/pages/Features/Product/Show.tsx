@@ -38,14 +38,6 @@ interface PageProps extends InertiaPageProps {
 
 export default function ProductShowPage({ product, auth }: PageProps) {
     const [quantity, setQuantity] = useState(1);
-    const [mainImage, setMainImage] = useState(product.gambar_url);
-
-    const imageGallery = [
-        product.gambar_url,
-        'https://via.placeholder.com/600x600/cccccc/808080?text=Product+View+2',
-        'https://via.placeholder.com/600x600/cccccc/808080?text=Product+View+3',
-        'https://via.placeholder.com/600x600/cccccc/808080?text=Product+View+4',
-    ];
 
     const incrementQuantity = () => setQuantity(prev => prev + 1);
     const decrementQuantity = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1));
@@ -58,25 +50,14 @@ export default function ProductShowPage({ product, auth }: PageProps) {
                 <main>
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-                            {/* Kolom Kiri: Galeri Gambar */}
-                            <div className="flex flex-col gap-4">
+                            {/* Kolom Kiri: Gambar Produk Tunggal */}
+                            <div>
                                 <div className="aspect-square w-full overflow-hidden rounded-lg border">
                                     <img
-                                        src={mainImage}
+                                        src={product.gambar_url}
                                         alt={product.nama_produk}
                                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                                     />
-                                </div>
-                                <div className="grid grid-cols-4 gap-4">
-                                    {imageGallery.map((image, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => setMainImage(image)}
-                                            className={`aspect-square w-full rounded-md overflow-hidden border-2 transition-all ${mainImage === image ? 'border-[#FF6500]' : 'border-transparent hover:border-gray-300'}`}
-                                        >
-                                            <img src={image} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
@@ -121,15 +102,16 @@ export default function ProductShowPage({ product, auth }: PageProps) {
                                 <h2 className="text-2xl font-bold text-gray-900 pb-4">Detail Produk</h2>
                             </div>
                             <div className="prose max-w-none mt-6 text-gray-600">
-                                <p>
-                                    Ini adalah deskripsi lengkap produk. Anda bisa menambahkan lebih banyak detail di sini,
-                                    termasuk spesifikasi teknis, bahan yang digunakan, atau panduan perawatan.
-                                </p>
-                                <ul>
-                                    <li>Bahan: Kertas berkualitas tinggi</li>
-                                    <li>Ukuran: 10x15 cm</li>
-                                    <li>Finishing: Matte</li>
-                                </ul>
+                                <p>{product.deskripsi}</p>
+                                {product.attributeValues && product.attributeValues.length > 0 && (
+                                    <ul className="mt-4 space-y-2">
+                                        {product.attributeValues.map((attr) => (
+                                            <li key={attr.id}>
+                                                <strong className="font-semibold text-gray-800">{attr.attribute.name}:</strong> {attr.value}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         </div>
                     </div>

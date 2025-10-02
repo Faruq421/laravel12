@@ -112,6 +112,16 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 2 Oktober 2025
+- **Fitur:** Mengimplementasikan halaman detail produk untuk pelanggan.
+- **Backend:**
+    - Menambahkan *route* `products.show` untuk menampilkan satu produk.
+    - Membuat method `show` di `ProductController`.
+- **Frontend:**
+    - Membuat komponen React baru (`Product/Show.tsx`) untuk halaman detail.
+    - Mendesain tata letak halaman detail produk yang mencakup galeri gambar, informasi produk, dan tombol aksi.
+- **Perbaikan:** Memperbaiki masalah tata letak di mana halaman detail produk keliru menampilkan *sidebar* admin.
+
+### 2 Oktober 2025
 - **Refactor:** Mendesain ulang kartu produk pada halaman utama (`CollectionSection.tsx`) untuk meningkatkan pengalaman pengguna.
 - **UI/UX:**
     - Gambar dan nama produk kini menjadi satu tautan ke halaman detail.

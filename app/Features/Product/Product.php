@@ -7,6 +7,7 @@ use App\Features\Product\AttributeValue; // Saya tambahkan ini untuk kelengkapan
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage; // <-- Tambahan dari saya
+use Illuminate\Support\Str; // <-- Tambahkan ini
 
 class Product extends Model
 {
@@ -16,6 +17,7 @@ class Product extends Model
 
     protected $fillable = [
         'nama_produk',
+        'slug', // <-- Tambahkan slug
         'deskripsi',
         'harga',
         'stok',
@@ -23,6 +25,31 @@ class Product extends Model
         'category_id',
         'status',
     ];
+    /**
+     *  Setup model event hooks
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product) {
+            $product->slug = Str::slug($product->nama_produk);
+        });
+
+        static::updating(function (Product $product) {
+            if ($product->isDirty('nama_produk')) {
+                $product->slug = Str::slug($product->nama_produk);
+            }
+        });
+    }
+
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
 
     protected $casts = [
         'status' => 'boolean',
