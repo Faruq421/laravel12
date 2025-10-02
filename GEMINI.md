@@ -112,6 +112,17 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 2 Oktober 2025
+- **Fitur:** Mengganti URL produk dari berbasis ID menjadi berbasis `slug` untuk meningkatkan SEO dan keterbacaan.
+- **Fitur:** Detail produk pada halaman detail kini menampilkan data dinamis dari database.
+- **UI/UX:** Menyederhanakan halaman detail produk dengan menghapus galeri thumbnail dan hanya menampilkan satu gambar utama.
+- **Backend:**
+    - Menambahkan kolom `slug` ke tabel `products` melalui migrasi.
+    - Memperbarui model `Product` untuk membuat `slug` secara otomatis saat produk disimpan.
+    - Membuat command Artisan `product:generate-slugs` untuk mengisi data `slug` pada produk yang sudah ada.
+- **Frontend:**
+    - Memperbarui semua tautan produk di halaman utama untuk menggunakan `slug` baru.
+
+### 2 Oktober 2025
 - **Fitur:** Mengimplementasikan halaman detail produk untuk pelanggan.
 - **Backend:**
     - Menambahkan *route* `products.show` untuk menampilkan satu produk.
