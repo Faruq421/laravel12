@@ -40,30 +40,28 @@ export default function CollectionSection({ isInView, products }: CollectionSect
                 <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                     {products && products.length > 0 ? (
                         products.map((product) => (
-                            <Card key={product.id_produk} className="text-left rounded-lg overflow-hidden group relative transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
-                                <div className="relative overflow-hidden">
-                                    <Link href="#">
+                            <Card key={product.id_produk} className="text-left rounded-lg overflow-hidden group flex flex-col transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
+                                <Link href={`/products/${product.id_produk}`} className="flex-grow">
+                                    <div className="relative overflow-hidden">
                                         <img
                                             src={product.gambar_url}
                                             alt={product.nama_produk}
                                             className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
                                         />
-                                    </Link>
-
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                                            <Button asChild size="sm" className="bg-white hover:bg-gray-200 text-gray-800 font-bold shadow-md"><Link href="#">Lihat Detail</Link></Button>
-                                            <Button asChild size="icon" className="bg-[#FF6500] hover:bg-[#C40C0C] text-white shadow-md"><Link href="#"><ShoppingCart className="h-5 w-5" /></Link></Button>
-                                        </div>
                                     </div>
+                                    <CardContent className="p-5 bg-white">
+                                        <p className="text-sm text-gray-500">{product.category?.name || 'Uncategorized'}</p>
+                                        <h3 className="font-semibold text-lg mt-1 text-gray-800 group-hover:text-[#FF6500] transition-colors">
+                                            {product.nama_produk}
+                                        </h3>
+                                    </CardContent>
+                                </Link>
+                                <div className="p-5 bg-white border-t border-gray-100 flex justify-between items-center">
+                                    <p className="font-bold text-xl text-gray-900">Rp {product.harga.toLocaleString('id-ID')}</p>
+                                    <Button size="icon" className="bg-[#FF6500] hover:bg-[#C40C0C] text-white shadow-md">
+                                        <ShoppingCart className="h-5 w-5" />
+                                    </Button>
                                 </div>
-                                <CardContent className="p-5 bg-white">
-                                    <p className="text-sm text-gray-500">{product.category?.name || 'Uncategorized'}</p>
-                                    <h3 className="font-semibold text-lg mt-1 text-gray-800">
-                                        <Link href="#" className="hover:text-[#FF6500] transition-colors">{product.nama_produk}</Link>
-                                    </h3>
-                                    <p className="font-bold text-xl text-gray-900 mt-2">Rp {product.harga.toLocaleString('id-ID')}</p>
-                                </CardContent>
                             </Card>
                         ))
                     ) : (

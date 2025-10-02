@@ -110,3 +110,6 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 ### Riwayat Perubahan
 
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
+
+### 2 Oktober 2025
+- **Dokumentasi:** Memperbarui `GEMINI.md` dengan alur kerja baru untuk pencatatan changelog semi-otomatis.
