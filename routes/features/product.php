@@ -1,6 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Features\Product\ProductController;
+use Illuminate\Support\Facades\Route;
 
-Route::resource('products', ProductController::class)->middleware(['auth', 'verified', 'role:admin']);
+// Rute untuk publik (tidak perlu login)
+Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+
+// Rute untuk admin (perlu login dan peran admin)
+Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
+    Route::resource('products', ProductController::class)->except(['show']);
+});

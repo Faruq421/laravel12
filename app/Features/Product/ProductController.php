@@ -35,6 +35,13 @@ class ProductController extends Controller
         ]);
     }
 
+    public function show(Product $product)
+    {
+        return Inertia::render('Features/Product/Show', [
+            'product' => $product->load('category', 'attributeValues.attribute'),
+        ]);
+    }
+
     public function create()
     {
         return Inertia::render('Features/Product/FormPage', [

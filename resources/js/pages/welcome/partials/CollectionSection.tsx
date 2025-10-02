@@ -41,7 +41,7 @@ export default function CollectionSection({ isInView, products }: CollectionSect
                     {products && products.length > 0 ? (
                         products.map((product) => (
                             <Card key={product.id_produk} className="text-left rounded-lg overflow-hidden group flex flex-col transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
-                                <Link href={`/products/${product.id_produk}`} className="flex-grow">
+                                <Link href={route('products.show', product.id_produk)} className="flex-grow">
                                     <div className="relative overflow-hidden">
                                         <img
                                             src={product.gambar_url}

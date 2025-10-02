@@ -112,4 +112,11 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 2 Oktober 2025
+- **Refactor:** Mendesain ulang kartu produk pada halaman utama (`CollectionSection.tsx`) untuk meningkatkan pengalaman pengguna.
+- **UI/UX:**
+    - Gambar dan nama produk kini menjadi satu tautan ke halaman detail.
+    - Menghapus tombol "Lihat Detail" yang berlebihan.
+    - Memindahkan tombol "Add to Cart" ke posisi yang lebih intuitif.
+
+### 2 Oktober 2025
 - **Dokumentasi:** Memperbarui `GEMINI.md` dengan alur kerja baru untuk pencatatan changelog semi-otomatis.
