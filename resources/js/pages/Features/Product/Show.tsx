@@ -1,3 +1,4 @@
+import { Input } from '@/components/ui/input';
 import { Head } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Toaster, toast } from 'sonner';
@@ -25,12 +26,13 @@ interface ProductData {
     id_produk: number; nama_produk: string; deskripsi: string; harga: number; gambar_url: string;
     category: { name: string }; attribute_values: AttributeValue[];
     allow_custom_design: boolean; design_templates: DesignTemplate[];
+    enable_design_feature: boolean;
 }
 interface PageProps extends InertiaPageProps { product: ProductData; }
 
 export default function ProductShowPage({ product, auth }: PageProps) {
     // --- State Manajemen ---
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState<number | string>(1);
     const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>({});
     const [designSource, setDesignSource] = useState<'upload' | 'template' | null>(null);
     const [selectedTemplate, setSelectedTemplate] = useState<DesignTemplate | null>(null);
@@ -51,12 +53,30 @@ export default function ProductShowPage({ product, auth }: PageProps) {
         setSelectedOptions(prev => ({ ...prev, [attributeId]: valueId }));
     };
 
+    const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        // Hanya izinkan angka atau string kosong
+        if (/^\d*$/.test(value)) {
+            setQuantity(value);
+        }
+    };
+
+    const handleQuantityBlur = () => {
+        const numQuantity = Number(quantity);
+        if (isNaN(numQuantity) || numQuantity < 1) {
+            setQuantity(1);
+        } else {
+            setQuantity(numQuantity);
+        }
+    };
+
+
     const totalPrice = useMemo(() => {
         const attributesPrice = Object.values(selectedOptions).reduce((total, valueId) => {
             const selectedValue = product.attribute_values.find(v => v.id === valueId);
             return total + (selectedValue ? selectedValue.pivot.price : 0);
         }, 0);
-        return (product.harga + attributesPrice) * quantity;
+        return (product.harga + attributesPrice) * Number(quantity);
     }, [selectedOptions, quantity, product.harga, product.attribute_values]);
 
     // --- Logika Opsi Desain ---
@@ -95,12 +115,12 @@ export default function ProductShowPage({ product, auth }: PageProps) {
     // --- Logika Tombol Aksi & Tooltip ---
     const hasAttributes = Object.keys(attributeGroups).length > 0;
     const areAllOptionsSelected = hasAttributes ? Object.keys(selectedOptions).length === Object.keys(attributeGroups).length : true;
-    const isDesignSelected = !!selectedTemplate || !!uploadedFile;
+    const isDesignSelected = !product.enable_design_feature || !!selectedTemplate || !!uploadedFile;
     const isAddToCartDisabled = !areAllOptionsSelected || !isDesignSelected;
 
     const getTooltipMessage = () => {
         if (!areAllOptionsSelected) return "Harap pilih semua opsi atribut (misal: Ukuran, Bahan).";
-        if (!isDesignSelected) return "Harap unggah desain Anda atau pilih salah satu template kami.";
+        if (product.enable_design_feature && !isDesignSelected) return "Harap unggah desain Anda atau pilih salah satu template kami.";
         return "";
     };
 
@@ -110,6 +130,10 @@ export default function ProductShowPage({ product, auth }: PageProps) {
 
     // --- Render Komponen ---
     const renderDesignOptions = () => {
+        if (!product.enable_design_feature) {
+            return null;
+        }
+
         const allowUpload = product.allow_custom_design;
         const hasTemplates = product.design_templates && product.design_templates.length > 0;
 
@@ -247,10 +271,16 @@ export default function ProductShowPage({ product, auth }: PageProps) {
                                 <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-4">
                                         <h3 className="text-md font-semibold text-gray-800 dark:text-gray-200">Jumlah</h3>
-                                        <div className="flex items-center rounded-lg border bg-white dark:border-gray-700 dark:bg-gray-800">
-                                            <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="rounded-r-none"><Minus className="h-4 w-4" /></Button>
-                                            <span className="px-6 text-lg font-bold">{quantity}</span>
-                                            <Button variant="ghost" size="icon" onClick={() => setQuantity(q => q + 1)} className="rounded-l-none"><Plus className="h-4 w-4" /></Button>
+                                        <div className="flex h-11 items-center rounded-lg border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800">
+                                            <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.max(1, Number(q) - 1))} className="h-full rounded-r-none px-3 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"><Minus className="h-4 w-4" /></Button>
+                                            <Input
+                                                type="text"
+                                                value={quantity}
+                                                onChange={handleQuantityChange}
+                                                onBlur={handleQuantityBlur}
+                                                className="h-full w-16 border-x border-y-0 bg-transparent p-0 text-center text-lg font-bold focus-visible:ring-0 focus-visible:ring-offset-0"
+                                            />
+                                            <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Number(q) + 1)} className="h-full rounded-l-none px-3 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"><Plus className="h-4 w-4" /></Button>
                                         </div>
                                     </div>
                                     <p className="text-right text-3xl font-bold text-gray-900 dark:text-gray-100">Rp {totalPrice.toLocaleString('id-ID')}</p>

@@ -1,80 +1,48 @@
-# Rencana Eksekusi: Implementasi Opsi Desain Interaktif di Halaman Detail Produk
+# Rencana Eksekusi: Fitur Master Switch untuk Opsi Desain Produk
 
 ## 1. Tujuan Utama
 
-Merombak total halaman detail produk (`Product/Show.tsx`) untuk mengintegrasikan sistem pemilihan desain yang interaktif dan kondisional. Pelanggan akan dapat mengunggah desain sendiri atau memilih dari *template* yang disediakan admin, tergantung pada konfigurasi produk. Desain antarmuka akan dibuat modern, bersih, dan sangat ramah pengguna.
+Mengimplementasikan sebuah saklar (switch) utama pada level produk untuk mengaktifkan atau menonaktifkan seluruh fungsionalitas opsi desain (unggah kustom & pilih template) bagi pelanggan. Fitur ini harus nonaktif secara default.
 
 ---
 
-## FASE 1: Persiapan & Instalasi Komponen UI
+## FASE 1: Modifikasi Backend & Database
 
-### Langkah 1.1: Instal Komponen `shadcn/ui` yang Diperlukan
+### Langkah 1.1: Buat Migrasi Database Baru
+-   Buat file migrasi baru untuk menambahkan kolom `enable_design_feature` ke tabel `products`.
+-   Kolom ini harus bertipe `boolean` dan memiliki nilai default `false`.
 
-Kita memerlukan beberapa komponen baru dari `shadcn/ui` untuk membangun antarmuka yang modern. Jalankan perintah berikut untuk menginstal `Tabs` (untuk pilihan unggah/template) dan `Dialog` (untuk pratinjau detail *template*).
+### Langkah 1.2: Jalankan Migrasi
+-   Terapkan perubahan skema database dengan menjalankan perintah `php artisan migrate`.
 
-```bash
-npx shadcn-ui@latest add tabs dialog
-```
+### Langkah 1.3: Perbarui Model Product
+-   Tambahkan `enable_design_feature` ke dalam properti `$fillable` di model `Product.php` agar dapat diisi secara massal.
+-   Tambahkan juga ke properti `$casts` untuk memastikan nilainya selalu bertipe `boolean`.
 
----
-
-## FASE 2: Refactor Total Halaman Detail Produk (`Product/Show.tsx`)
-
-Ini adalah inti dari perubahan, di mana kita akan mengimplementasikan seluruh logika dan antarmuka baru.
-
-### Langkah 2.1: Impor Dependensi & Manajemen State Baru
-
--   **Impor:** Tambahkan semua impor yang diperlukan di bagian atas file, termasuk `useState`, `useMemo`, `Tabs`, `Dialog`, `useDropzone`, dan ikon dari `lucide-react`.
--   **State:** Buat beberapa state baru untuk mengelola alur kerja:
-    -   `designSource`: Menyimpan pilihan pelanggan ('upload' atau 'template').
-    -   `selectedTemplate`: Menyimpan objek *template* yang dipilih pelanggan.
-    -   `uploadedFile`: Menyimpan file yang diunggah pelanggan.
-    -   `previewUrl`: Menyimpan URL pratinjau untuk file yang diunggah.
-    -   `isModalOpen` & `viewingTemplate`: Mengelola state untuk modal pratinjau detail *template*.
-
-### Langkah 2.2: Desain Ulang Struktur Komponen Utama
-
--   Buat sebuah area baru bernama **"Opsi Desain"** di bawah bagian atribut produk.
--   **Render Kondisional:**
-    1.  Jika produk **mengizinkan desain kustom (`allow_custom_design`) DAN memiliki *template* admin**, render komponen `Tabs` dengan dua pilihan: "Unggah Desain Sendiri" dan "Pilih dari Template".
-    2.  Jika produk **hanya mengizinkan desain kustom**, render area unggah file secara langsung.
-    3.  Jika produk **hanya memiliki *template* admin**, render galeri *template* secara langsung.
-
-### Langkah 2.3: Implementasi Tab/Galeri "Pilih Template"
-
--   Tampilkan *template* yang tersedia dalam bentuk galeri *thumbnail* (grid).
--   Setiap *thumbnail* akan memiliki efek *hover* dan tombol "Lihat Detail".
--   Ketika *thumbnail* atau tombolnya diklik, state `viewingTemplate` akan diisi dan modal `Dialog` akan terbuka.
--   Jika sebuah *template* sudah dipilih, *thumbnail*-nya akan diberi tanda visual (misalnya, border berwarna).
-
-### Langkah 2.4: Implementasi Tab/Area "Unggah Desain"
-
--   Gunakan `react-dropzone` untuk membuat area unggah *drag-and-drop* yang intuitif.
--   Setelah file diunggah, tampilkan pratinjau gambar beserta nama file dan tombol untuk menghapus/mengganti file.
-
-### Langkah 2.5: Implementasi Modal Pratinjau Detail Template
-
--   Gunakan komponen `Dialog` dari `shadcn/ui`.
--   Di dalam modal, tampilkan gambar *template* dalam ukuran yang lebih besar (`DialogContent`) dan namanya (`DialogTitle`).
--   Sediakan tombol "Pilih Template Ini" di dalam modal. Ketika diklik, tombol ini akan mengisi state `selectedTemplate`, menutup modal, dan mengatur `designSource` ke 'template'.
-
-### Langkah 2.6: Logika Cerdas untuk Tombol "Tambah ke Keranjang"
-
--   Tombol "Tambah ke Keranjang" akan dinonaktifkan secara default.
--   Tombol ini hanya akan aktif jika:
-    -   Semua atribut wajib produk (seperti Ukuran, Bahan) telah dipilih.
-    -   **DAN** salah satu kondisi desain berikut terpenuhi:
-        -   Pelanggan telah memilih *template* dari galeri.
-        -   Pelanggan telah mengunggah file desainnya sendiri.
--   Jika tombol dinonaktifkan, gunakan komponen `Tooltip` untuk memberi tahu pengguna langkah apa yang harus diselesaikan.
+### Langkah 1.4: Perbarui `ProductController`
+-   Tambahkan aturan validasi untuk `enable_design_feature` di dalam metode `validateProduct`.
+-   Pastikan nilainya disimpan dengan benar di dalam metode `store` dan `update`.
 
 ---
 
-## FASE 3: Penyesuaian Backend (Tugas di Masa Depan)
+## FASE 2: Penyesuaian Frontend Panel Admin (`FormPage.tsx`)
 
-### Langkah 3.1: Catatan untuk Penanganan Keranjang
+### Langkah 2.1: Tambahkan Master Switch
+-   Di dalam `Card` "Opsi Desain", tambahkan komponen `Switch` baru di bagian paling atas. `Switch` ini akan mengontrol state `data.enable_design_feature`.
 
--   Perubahan ini hanya berfokus pada *frontend*. Logika untuk menambahkan produk ke keranjang di `CartController` (atau yang setara) perlu diperbarui di masa mendatang untuk dapat menerima dan memproses `uploaded_file` atau `design_template_id`.
+### Langkah 2.2: Render Sisa Opsi Secara Kondisional
+-   Buat sisa dari `CardContent` (yaitu `Switch` untuk "Izinkan Desain Kustom" dan area unggah *template*) hanya muncul jika `data.enable_design_feature` bernilai `true`.
+
+---
+
+## FASE 3: Penyesuaian Frontend Halaman Detail Produk (`Show.tsx`)
+
+### Langkah 3.1: Render Seluruh Bagian Desain Secara Kondisional
+-   Temukan fungsi `renderDesignOptions()` dan bungkus seluruh isinya dengan sebuah kondisi. Fungsi ini hanya akan me-return JSX jika `product.enable_design_feature` bernilai `true`. Jika `false`, fungsi akan me-return `null`.
+
+### Langkah 3.2: Perbarui Logika Tombol "Tambah ke Keranjang"
+-   Modifikasi variabel `isDesignSelected`. Jika `product.enable_design_feature` adalah `false`, variabel ini harus selalu `true` (mengabaikan pengecekan desain). Jika `true`, maka logika pengecekan yang ada saat ini akan digunakan.
+-   Perbarui juga `getTooltipMessage()` agar tidak meminta pengguna memilih desain jika fiturnya nonaktif.
 
 ---
 Selesai.

@@ -26,6 +26,7 @@ interface DesignTemplate { id: number; name: string; thumbnail_path: string; }
 interface Product {
     id_produk: number; nama_produk: string; deskripsi: string; harga: number; stok: number;
     gambar: string; category_id: number; status: boolean; allow_custom_design: boolean;
+    enable_design_feature: boolean;
     attribute_values?: {
         id: number; value: string;
         attribute: { id: number; name: string; };
@@ -61,12 +62,13 @@ export default function FormPage({ auth, item, categories, allAttributes, design
     const { data, setData, post, processing, errors } = useForm<{
         nama_produk: string; deskripsi: string; harga: number; stok: number; gambar: File | null;
         category_id: number | string; status: boolean; attributes: FormAttribute[];
-        allow_custom_design: boolean; design_templates: DesignTemplate[]; _method?: 'PUT';
+        allow_custom_design: boolean; enable_design_feature: boolean; design_templates: DesignTemplate[]; _method?: 'PUT';
     }>({
         nama_produk: item?.nama_produk ?? '', deskripsi: item?.deskripsi ?? '', harga: item?.harga ?? 0,
         stok: item?.stok ?? 0, gambar: null, category_id: item?.category_id ?? '', status: item?.status ?? false,
         attributes: formatAttributesFromBackend(item),
         allow_custom_design: item?.allow_custom_design ?? false,
+        enable_design_feature: item?.enable_design_feature ?? false,
         design_templates: item?.design_templates ?? [],
     });
 
@@ -319,45 +321,54 @@ export default function FormPage({ auth, item, categories, allAttributes, design
                                     <CardDescription>Atur bagaimana pelanggan dapat menyediakan desain.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
-                                    <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                                        <Switch id="allow_custom_design" checked={data.allow_custom_design} onCheckedChange={(checked) => setData('allow_custom_design', checked)} />
-                                        <Label htmlFor="allow_custom_design">Izinkan Pelanggan Unggah Desain Sendiri</Label>
+                                    <div className="flex items-center space-x-2 p-4 border rounded-lg bg-yellow-50/50 dark:bg-yellow-900/10">
+                                        <Switch id="enable_design_feature" checked={data.enable_design_feature} onCheckedChange={(checked) => setData('enable_design_feature', checked)} />
+                                        <Label htmlFor="enable_design_feature">Aktifkan Fitur Desain Untuk Produk Ini</Label>
                                     </div>
-                                    <div>
-                                        <Label>Template Desain</Label>
-                                        <p className="text-sm text-gray-500 mb-3">Seret & lepas gambar untuk diunggah sebagai template baru untuk produk ini.</p>
-                                        <div {...getRootProps()} className={cn("flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800", isDragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-300 dark:border-gray-600")}>
-                                            <input {...getInputProps()} />
-                                            {isUploading ? (
-                                                <div className="text-center text-gray-500">
-                                                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                                                    <p className="mt-2 text-sm">Mengunggah...</p>
-                                                </div>
-                                            ) : isDragActive ? (
-                                                <p className="text-center text-blue-500">Lepaskan file di sini...</p>
-                                            ) : (
-                                                <div className="text-center text-gray-500">
-                                                    <UploadCloud className="mx-auto h-8 w-8" />
-                                                    <p className="mt-2 text-sm">Seret & lepas atau klik untuk memilih file</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {data.design_templates.length > 0 && (
-                                            <div className="mt-4 space-y-2">
-                                                <Label>Template Tertaut</Label>
-                                                <div className="grid grid-cols-3 gap-4">
-                                                    {data.design_templates.map(template => (
-                                                        <div key={template.id} className="relative group">
-                                                            <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className="w-full h-24 object-cover rounded-md" />
-                                                            <button type="button" onClick={() => unlinkTemplate(template.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <X className="h-3 w-3" />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
+
+                                    {data.enable_design_feature && (
+                                        <div className="space-y-6 pt-6 border-t border-dashed">
+                                            <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                                                <Switch id="allow_custom_design" checked={data.allow_custom_design} onCheckedChange={(checked) => setData('allow_custom_design', checked)} />
+                                                <Label htmlFor="allow_custom_design">Izinkan Pelanggan Unggah Desain Sendiri</Label>
                                             </div>
-                                        )}
-                                    </div>
+                                            <div>
+                                                <Label>Template Desain</Label>
+                                                <p className="text-sm text-gray-500 mb-3">Seret & lepas gambar untuk diunggah sebagai template baru untuk produk ini.</p>
+                                                <div {...getRootProps()} className={cn("flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800", isDragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-300 dark:border-gray-600")}>
+                                                    <input {...getInputProps()} />
+                                                    {isUploading ? (
+                                                        <div className="text-center text-gray-500">
+                                                            <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                                                            <p className="mt-2 text-sm">Mengunggah...</p>
+                                                        </div>
+                                                    ) : isDragActive ? (
+                                                        <p className="text-center text-blue-500">Lepaskan file di sini...</p>
+                                                    ) : (
+                                                        <div className="text-center text-gray-500">
+                                                            <UploadCloud className="mx-auto h-8 w-8" />
+                                                            <p className="mt-2 text-sm">Seret & lepas atau klik untuk memilih file</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {data.design_templates.length > 0 && (
+                                                    <div className="mt-4 space-y-2">
+                                                        <Label>Template Tertaut</Label>
+                                                        <div className="grid grid-cols-3 gap-4">
+                                                            {data.design_templates.map(template => (
+                                                                <div key={template.id} className="relative group">
+                                                                    <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className="w-full h-24 object-cover rounded-md" />
+                                                                    <button type="button" onClick={() => unlinkTemplate(template.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <X className="h-3 w-3" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>

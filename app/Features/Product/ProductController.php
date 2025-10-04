@@ -139,6 +139,7 @@ class ProductController extends Controller
             'category_id' => 'required|exists:categories,id',
             'status' => 'required|boolean',
             'allow_custom_design' => 'required|boolean',
+            'enable_design_feature' => 'required|boolean',
             'design_templates' => 'nullable|array',
             'design_templates.*.id' => 'exists:design_templates,id',
             'attributes' => 'nullable|array',

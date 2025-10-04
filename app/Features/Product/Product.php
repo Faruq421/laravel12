@@ -25,6 +25,7 @@ class Product extends Model
         'category_id',
         'status',
         'allow_custom_design',
+        'enable_design_feature',
     ];
     /**
      *  Setup model event hooks
@@ -54,6 +55,8 @@ class Product extends Model
 
     protected $casts = [
         'status' => 'boolean',
+        'allow_custom_design' => 'boolean',
+        'enable_design_feature' => 'boolean',
     ];
 
     /**
