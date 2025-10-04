@@ -64,10 +64,7 @@ class ProductController extends Controller
             }
             $product = Product::create($validatedData);
             $this->syncAttributes($product, $request->input('attributes', []));
-
-            if ($request->has('design_templates')) {
-                $product->designTemplates()->sync($request->input('design_templates', []));
-            }
+            $product->designTemplates()->sync($request->input('design_templates', []));
 
             return $product;
         });
@@ -102,10 +99,7 @@ class ProductController extends Controller
             }
             $product->update($validatedData);
             $this->syncAttributes($product, $request->input('attributes', []));
-
-            if ($request->has('design_templates')) {
-                $product->designTemplates()->sync($request->input('design_templates', []));
-            }
+            $product->designTemplates()->sync($request->input('design_templates', []));
         });
 
         return redirect()->route('products.index')->with('message', 'Produk berhasil diperbarui.');

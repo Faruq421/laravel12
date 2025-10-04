@@ -24,6 +24,7 @@ class Product extends Model
         'gambar',
         'category_id',
         'status',
+        'allow_custom_design',
     ];
     /**
      *  Setup model event hooks

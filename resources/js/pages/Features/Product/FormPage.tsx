@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { PageProps, BreadcrumbItem } from '@/types';
@@ -11,11 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from "@/components/ui/switch";
 import { cn } from '@/lib/utils';
-import { UploadCloud, X, PlusCircle } from 'lucide-react';
+import { UploadCloud, X, PlusCircle, Loader2 } from 'lucide-react';
+import { useDropzone } from 'react-dropzone';
+import axios from 'axios';
+import { toast } from 'sonner';
 
-import { Checkbox } from '@/components/ui/checkbox';
-
-// --- Tipe Data (tidak ada perubahan) ---
+// --- Tipe Data ---
 interface Category { id: number; name: string; }
 interface AttributeValue { id: number; value: string; }
 interface ExistingAttribute { id: number; name: string; values: AttributeValue[]; }
@@ -36,10 +37,10 @@ interface FormPageProps extends PageProps {
     item?: Product;
     categories: Category[];
     allAttributes: ExistingAttribute[];
-    designTemplates: DesignTemplate[];
+    designTemplates: DesignTemplate[]; // Ini adalah semua template yg ada di sistem
 }
 
-export default function FormPage({ auth, item, categories, allAttributes, designTemplates }: FormPageProps) {
+export default function FormPage({ auth, item, categories, allAttributes, designTemplates: allSystemTemplates }: FormPageProps) {
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Products', href: route('products.index') },
@@ -68,8 +69,9 @@ export default function FormPage({ auth, item, categories, allAttributes, design
         allow_custom_design: item?.allow_custom_design ?? false,
         design_templates: item?.design_templates?.map(dt => dt.id) ?? [],
     });
+
+    // --- State & Logic untuk Gambar Produk ---
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [currentOptions, setCurrentOptions] = useState<{ [key: string]: string }>({});
     useEffect(() => {
         if (data.gambar) {
             const url = URL.createObjectURL(data.gambar);
@@ -77,14 +79,9 @@ export default function FormPage({ auth, item, categories, allAttributes, design
             return () => URL.revokeObjectURL(url);
         }
     }, [data.gambar]);
-    function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        const url = item ? route('products.update', item.id_produk) : route('products.store');
-        post(url, { forceFormData: true });
-    }
-    if (item && !data._method) { setData('_method', 'PUT'); }
 
-    // --- FUNGSI LOGIKA (tidak ada perubahan) ---
+    // --- State & Logic untuk Atribut ---
+    const [currentOptions, setCurrentOptions] = useState<{ [key: string]: string }>({});
     const addAttribute = () => { setData('attributes', [...data.attributes, { id: `new-${Date.now()}`, name: '', options: [] }]); };
     const removeAttribute = (id: string) => { setData('attributes', data.attributes.filter(attr => attr.id !== id)); };
     const handleAttributeNameChange = (id: string, value: string) => { setData('attributes', data.attributes.map(attr => attr.id === id ? { ...attr, name: value } : attr)); };
@@ -117,13 +114,63 @@ export default function FormPage({ auth, item, categories, allAttributes, design
         }));
     };
 
-    const handleDesignTemplateChange = (templateId: number, checked: boolean) => {
-        if (checked) {
-            setData('design_templates', [...data.design_templates, templateId]);
-        } else {
-            setData('design_templates', data.design_templates.filter(id => id !== templateId));
+    // --- State & Logic untuk Template Desain ---
+    const [linkedTemplates, setLinkedTemplates] = useState<DesignTemplate[]>(item?.design_templates ?? []);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleDrop = useCallback((acceptedFiles: File[]) => {
+        if (!item) {
+            toast.error("Fitur ini hanya untuk mode edit", {
+                description: "Simpan produk sebagai draf terlebih dahulu sebelum mengunggah template.",
+            });
+            return;
         }
+
+        setIsUploading(true);
+        const uploadPromises = acceptedFiles.map(file => {
+            const formData = new FormData();
+            formData.append('file', file);
+            // KIRIM ID PRODUK BERSAMA FILE
+            if (item) {
+                formData.append('product_id', String(item.id_produk));
+            }
+            return axios.post(route('design-templates.upload'), formData);
+        });
+
+        Promise.all(uploadPromises)
+            .then(responses => {
+                const newTemplates = responses.map(res => res.data);
+                setLinkedTemplates(current => [...current, ...newTemplates]);
+                setData('design_templates', currentIds => [...currentIds, ...newTemplates.map(t => t.id)]);
+                toast.success(`${newTemplates.length} template berhasil diunggah.`);
+            })
+            .catch(error => {
+                console.error("Upload error:", error);
+                toast.error("Gagal mengunggah template.", { description: error.response?.data?.message || error.message });
+            })
+            .finally(() => {
+                setIsUploading(false);
+            });
+    }, [setData]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop: handleDrop,
+        accept: { 'image/*': ['.jpeg', '.png', '.jpg', '.gif', '.svg'] },
+        disabled: isUploading,
+    });
+
+    const unlinkTemplate = (templateId: number) => {
+        setData('design_templates', data.design_templates.filter(id => id !== templateId));
+        setLinkedTemplates(linkedTemplates.filter(t => t.id !== templateId));
     };
+
+    // --- Submit Handler ---
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        const url = item ? route('products.update', item.id_produk) : route('products.store');
+        post(url, { forceFormData: true });
+    }
+    if (item && !data._method) { setData('_method', 'PUT'); }
 
     const imageSource = previewUrl || (item?.gambar ? `/storage/${item.gambar}` : null);
 
@@ -167,6 +214,7 @@ export default function FormPage({ auth, item, categories, allAttributes, design
                                 </CardContent>
                             </Card>
 
+                            {/* Card Varian Produk */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Varian Produk (Atribut)</CardTitle>
@@ -174,26 +222,21 @@ export default function FormPage({ auth, item, categories, allAttributes, design
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     {data.attributes.map((attribute) => {
-                                        // --- LOGIKA BARU UNTUK MENDAPATKAN SARAN NILAI ---
                                         const existingAttr = allAttributes.find(a => a.name === attribute.name);
                                         const valueSuggestions = existingAttr ? existingAttr.values : [];
-
                                         return (
                                             <div key={attribute.id} className="p-4 border rounded-lg space-y-4 relative bg-gray-50/50 dark:bg-gray-900/50">
                                                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-gray-500 hover:text-red-500" onClick={() => removeAttribute(attribute.id)}>
                                                     <X className="h-4 w-4" />
                                                 </Button>
-
                                                 <div className="space-y-2">
                                                     <Label>Nama Varian (Contoh: Ukuran)</Label>
                                                     <Input list="attributes-list" value={attribute.name} onChange={(e) => handleAttributeNameChange(attribute.id, e.target.value)} placeholder="Pilih atau ketik baru" className="bg-white dark:bg-gray-800" />
                                                     <datalist id="attributes-list">{allAttributes.map(attr => <option key={attr.id} value={attr.name} />)}</datalist>
                                                 </div>
-
                                                 <div className="space-y-2">
                                                     <Label>Pilihan Varian (Contoh: S, M, L)</Label>
                                                     <div className="flex gap-2">
-                                                        {/* --- INPUT DENGAN DATALIST BARU UNTUK NILAI --- */}
                                                         <Input
                                                             list={`values-list-${attribute.id}`}
                                                             value={currentOptions[attribute.id] || ''}
@@ -210,7 +253,6 @@ export default function FormPage({ auth, item, categories, allAttributes, design
                                                         <Button type="button" onClick={() => addOption(attribute.id)}>Tambah</Button>
                                                     </div>
                                                 </div>
-
                                                 {attribute.options.length > 0 && (
                                                     <div className="space-y-3 pt-3 border-t border-dashed mt-4">
                                                         {attribute.options.map(option => (
@@ -288,7 +330,7 @@ export default function FormPage({ auth, item, categories, allAttributes, design
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Opsi Desain</CardTitle>
-                                    <CardDescription>Atur bagaimana pelanggan dapat menyediakan desain untuk produk ini.</CardDescription>
+                                    <CardDescription>Atur bagaimana pelanggan dapat menyediakan desain.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     <div className="flex items-center space-x-2 p-4 border rounded-lg">
@@ -296,26 +338,39 @@ export default function FormPage({ auth, item, categories, allAttributes, design
                                         <Label htmlFor="allow_custom_design">Izinkan Pelanggan Unggah Desain Sendiri</Label>
                                     </div>
                                     <div>
-                                        <Label>Pilih Template Desain (Opsional)</Label>
-                                        <p className="text-sm text-gray-500 mb-4">Pilih template yang bisa digunakan pelanggan jika mereka tidak punya desain sendiri.</p>
-                                        <div className="space-y-3 max-h-48 overflow-y-auto p-4 border rounded-lg">
-                                            {designTemplates.length > 0 ? designTemplates.map((template) => (
-                                                <div key={template.id} className="flex items-center space-x-3">
-                                                    <Checkbox
-                                                        id={`template-${template.id}`}
-                                                        checked={data.design_templates.includes(template.id)}
-                                                        onCheckedChange={(checked) => handleDesignTemplateChange(template.id, !!checked)}
-                                                    />
-                                                    <Label htmlFor={`template-${template.id}`} className="font-normal flex items-center gap-3 cursor-pointer">
-                                                        <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className="w-10 h-10 rounded-md object-cover" />
-                                                        {template.name}
-                                                    </Label>
+                                        <Label>Template Desain</Label>
+                                        <p className="text-sm text-gray-500 mb-3">Seret & lepas gambar untuk diunggah sebagai template baru untuk produk ini.</p>
+                                        <div {...getRootProps()} className={cn("flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800", isDragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-300 dark:border-gray-600")}>
+                                            <input {...getInputProps()} />
+                                            {isUploading ? (
+                                                <div className="text-center text-gray-500">
+                                                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                                                    <p className="mt-2 text-sm">Mengunggah...</p>
                                                 </div>
-                                            )) : (
-                                                <p className="text-sm text-gray-500 text-center py-4">Belum ada template desain.</p>
+                                            ) : isDragActive ? (
+                                                <p className="text-center text-blue-500">Lepaskan file di sini...</p>
+                                            ) : (
+                                                <div className="text-center text-gray-500">
+                                                    <UploadCloud className="mx-auto h-8 w-8" />
+                                                    <p className="mt-2 text-sm">Seret & lepas atau klik untuk memilih file</p>
+                                                </div>
                                             )}
                                         </div>
-                                        {errors.design_templates && <p className="text-sm text-red-500 mt-1">{errors.design_templates}</p>}
+                                        {linkedTemplates.length > 0 && (
+                                            <div className="mt-4 space-y-2">
+                                                <Label>Template Tertaut</Label>
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    {linkedTemplates.map(template => (
+                                                        <div key={template.id} className="relative group">
+                                                            <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className="w-full h-24 object-cover rounded-md" />
+                                                            <button type="button" onClick={() => unlinkTemplate(template.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>

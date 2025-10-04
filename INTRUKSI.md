@@ -1,166 +1,165 @@
-Instruksi Teknis: Implementasi Fitur Opsi Desain Produk
+Instruksi Teknis: Fungsionalisasi Fitur Opsi Desain di Sisi Admin
 1. Persona AI
-Anda adalah AI Developer Assistant. Tugas Anda adalah mengeksekusi serangkaian perintah php artisan, membuat file, dan memodifikasi kode yang ada sesuai dengan instruksi di bawah ini. Anda harus memahami konteks proyek dari file GEMINI.md dan menggunakan perintah php artisan make:feature jika diinstruksikan.
+Anda adalah seorang Senior Full-Stack Developer yang ahli dalam tumpukan teknologi Laravel, React (Inertia.js), dan shadcn/ui. Tugas Anda adalah mengeksekusi serangkaian modifikasi kode untuk mengimplementasikan fungsionalitas admin yang telah direncanakan.
 
 2. Tujuan Utama
-Mengimplementasikan fitur "Opsi Desain" untuk produk, yang memungkinkan pelanggan memilih antara mengunggah desain mereka sendiri atau memilih dari template yang disediakan toko.
+Membuat fitur "Manajemen Template Desain" menjadi fungsional sepenuhnya di sisi admin, dan menghubungkannya ke dalam form manajemen produk.
 
-FASE 1: Fondasi Backend (Database & Model)
-Langkah 1.1: Buat Migrasi untuk Menambah Opsi Desain pada Produk
-Jalankan perintah berikut di terminal:
+FASE 1: Membuat CRUD DesignTemplate Fungsional
+Langkah 1.1: Modifikasi DesignTemplateController untuk Unggah File
+Buka file app/Features/Product/DesignTemplateController.php. Modifikasi method store(), update(), dan destroy() untuk menangani penyimpanan dan penghapusan file.
 
-php artisan make:migration add_design_options_to_products_table --table=products
+A. Modifikasi store():
 
-Langkah 1.2: Modifikasi File Migrasi add_design_options
-Buka file migrasi yang baru dibuat di database/migrations/ dan ganti seluruh isinya dengan kode berikut:
-
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
+public function store(Request $request)
 {
-    public function up(): void
-    {
-        Schema::table('products', function (Blueprint $table) {
-            $table->boolean('allow_custom_design')->default(false)->after('status');
-        });
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'thumbnail_path' => 'required|image|max:2048',
+        'file_path' => 'required|file|max:10240', // Maks 10MB
+    ]);
+
+    if ($request->hasFile('thumbnail_path')) {
+        $validated['thumbnail_path'] = $request->file('thumbnail_path')->store('design_thumbnails', 'public');
     }
 
-    public function down(): void
-    {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn('allow_custom_design');
-        });
-    }
-};
-
-Langkah 1.3: Buat Fitur Baru untuk DesignTemplate Menggunakan Stub
-Jalankan perintah make:feature untuk membuat kerangka CRUD lengkap untuk template desain:
-
-php artisan make:feature DesignTemplate
-
-Langkah 1.4: Modifikasi File Migrasi create_design_templates_table
-Buka file migrasi ..._create_design_templates_table.php yang baru dibuat oleh make:feature dan ganti seluruh isinya dengan kode berikut:
-
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::create('design_templates', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('thumbnail_path');
-            $table->string('file_path');
-            $table->timestamps();
-        });
+    if ($request->hasFile('file_path')) {
+        $validated['file_path'] = $request->file('file_path')->store('design_files', 'public');
     }
 
-    public function down(): void
-    {
-        Schema::dropIfExists('design_templates');
-    }
-};
+    DesignTemplate::create($validated);
 
-Langkah 1.5: Buat Migrasi untuk Tabel Pivot
-Buat migrasi untuk tabel penghubung antara produk dan template desain:
-
-php artisan make:migration create_product_design_template_table
-
-Langkah 1.6: Modifikasi File Migrasi Tabel Pivot
-Buka file ..._create_product_design_template_table.php dan ganti seluruh isinya:
-
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::create('product_design_template', function (Blueprint $table) {
-            $table->foreignId('product_id_produk')->constrained('products', 'id_produk')->onDelete('cascade');
-            $table->foreignId('design_template_id')->constrained('design_templates')->onDelete('cascade');
-            $table->primary(['product_id_produk', 'design_template_id']);
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('product_design_template');
-    }
-};
-
-Langkah 1.7: Terapkan Semua Migrasi
-Jalankan perintah migrate untuk membuat semua tabel baru di database:
-
-php artisan migrate
-
-Langkah 1.8: Tambahkan Relasi pada Model
-Buka app/Features/Product/Product.php, dan tambahkan method relasi berikut di dalam class Product:
-
-public function designTemplates()
-{
-    return $this->belongsToMany(
-        \App\Features\Product\DesignTemplate::class,
-        'product_design_template',
-        'product_id_produk',
-        'design_template_id'
-    );
+    return redirect()->route('design-templates.index')->with('message', 'Template berhasil ditambahkan.');
 }
 
-Buka app/Features/Product/DesignTemplate.php (dibuat oleh make:feature), dan tambahkan method relasi berikut:
+B. Modifikasi update():
 
-public function products()
+public function update(Request $request, DesignTemplate $designTemplate)
 {
-    return $this->belongsToMany(
-        \App\Features\Product\Product::class,
-        'product_design_template',
-        'design_template_id',
-        'product_id_produk'
-    );
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'thumbnail_path' => 'nullable|image|max:2048',
+        'file_path' => 'nullable|file|max:10240',
+    ]);
+
+    if ($request->hasFile('thumbnail_path')) {
+        if ($designTemplate->thumbnail_path) {
+            Storage::disk('public')->delete($designTemplate->thumbnail_path);
+        }
+        $validated['thumbnail_path'] = $request->file('thumbnail_path')->store('design_thumbnails', 'public');
+    }
+
+    if ($request->hasFile('file_path')) {
+        if ($designTemplate->file_path) {
+            Storage::disk('public')->delete($designTemplate->file_path);
+        }
+        $validated['file_path'] = $request->file('file_path')->store('design_files', 'public');
+    }
+
+    $designTemplate->update($validated);
+
+    return redirect()->route('design-templates.index')->with('message', 'Template berhasil diperbarui.');
 }
 
-FASE 2: Implementasi Sisi Admin
-Langkah 2.1: Modifikasi Controller DesignTemplate
-Buka app/Features/Product/DesignTemplateController.php dan implementasikan logika untuk menangani unggahan file pada method store() dan update(), serta logika penghapusan file pada method destroy().
+C. Modifikasi destroy():
 
-Langkah 2.2: Modifikasi Form Produk Admin
-Buka resources/js/Pages/Features/Product/FormPage.tsx dan tambahkan:
+public function destroy(DesignTemplate $designTemplate)
+{
+    if ($designTemplate->thumbnail_path) {
+        Storage::disk('public')->delete($designTemplate->thumbnail_path);
+    }
+    if ($designTemplate->file_path) {
+        Storage::disk('public')->delete($designTemplate->file_path);
+    }
+    
+    $designTemplate->delete();
 
-Sebuah komponen <Switch> dari shadcn/ui yang terhubung ke kolom allow_custom_design.
+    return redirect()->route('design-templates.index')->with('message', 'Template berhasil dihapus.');
+}
 
-Sebuah komponen multi-select atau daftar checkbox untuk memilih DesignTemplate yang tersedia dan menghubungkannya dengan produk.
+Langkah 1.2: Modifikasi Form DesignTemplate di Frontend
+Buka resources/js/Pages/Features/Product/DesignTemplate/FormPage.tsx. Ganti input teks standar untuk thumbnail_path dan file_path menjadi komponen input file yang user-friendly.
 
-Pastikan data designTemplates yang ada dan semua designTemplates yang tersedia dilempar dari ProductController@edit dan ProductController@create.
+Tambahkan komponen Input File dengan Preview:
 
-Langkah 2.3: Perbarui Logika Penyimpanan di ProductController
-Di dalam app/Features/Product/ProductController.php, modifikasi method store() dan update() untuk menangani sinkronisasi relasi designTemplates:
+// Ganti input untuk thumbnail_path dengan ini:
+<div>
+    <Label htmlFor="thumbnail_path">Gambar Thumbnail (Preview)</Label>
+    <Input id="thumbnail_path" type="file" onChange={(e) => setData('thumbnail_path', e.target.files[0])} />
+    {/* Tampilkan preview jika sedang mengedit */}
+    {item?.thumbnail_path && !data.thumbnail_path && (
+        <img src={`/storage/${item.thumbnail_path}`} alt="Thumbnail Preview" className="mt-4 w-32 h-32 object-cover rounded-md" />
+    )}
+    <InputError message={errors.thumbnail_path} className="mt-2" />
+</div>
+
+// Ganti input untuk file_path dengan ini:
+<div>
+    <Label htmlFor="file_path">File Desain Resolusi Tinggi</Label>
+    <Input id="file_path" type="file" onChange={(e) => setData('file_path', e.target.files[0])} />
+    {item?.file_path && <p className="text-sm text-gray-500 mt-2">File saat ini: {item.file_path.split('/').pop()}</p>}
+    <InputError message={errors.file_path} className="mt-2" />
+</div>
+
+FASE 2: Menghubungkan Produk dengan Template
+Langkah 2.1: Perbarui ProductController untuk Mengirim Data Template
+Buka app/Features/Product/ProductController.php. Modifikasi method create() dan edit() untuk mengirimkan daftar semua template desain yang tersedia.
+
+// Di dalam method create():
+return Inertia::render('Features/Product/FormPage', [
+    'categories' => Category::all(),
+    'allAttributes' => Attribute::with('values')->get(),
+    'allDesignTemplates' => \App\Features\Product\DesignTemplate::all(), // <-- Tambahkan ini
+]);
+
+// Di dalam method edit():
+return Inertia::render('Features/Product/FormPage', [
+    'item' => $product->load('attributeValues.attribute', 'designTemplates'), // <-- Tambahkan 'designTemplates'
+    'categories' => Category::all(),
+    'allAttributes' => Attribute::with('values')->get(),
+    'allDesignTemplates' => \App\Features\Product\DesignTemplate::all(), // <-- Tambahkan ini
+]);
+
+Langkah 2.2: Tambahkan Kolom allow_custom_design pada Model Product
+Buka app/Features/Product/Product.php dan tambahkan allow_custom_design ke array $fillable.
+
+Langkah 2.3: Modifikasi Form Produk Admin (FormPage.tsx)
+Buka resources/js/Pages/Features/Product/FormPage.tsx. Tambahkan Switch untuk allow_custom_design dan MultiSelect kondisional untuk memilih template.
+
+// Tambahkan import Switch dan Label
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+
+// Di dalam form, tambahkan field ini:
+<div className="flex items-center space-x-2">
+    <Switch 
+        id="allow_custom_design" 
+        checked={data.allow_custom_design}
+        onCheckedChange={(checked) => setData('allow_custom_design', checked)}
+    />
+    <Label htmlFor="allow_custom_design">Izinkan Opsi Desain untuk Pelanggan</Label>
+</div>
+
+{/* Tampilkan pilihan template jika switch aktif */}
+{data.allow_custom_design && (
+    <div>
+        <Label>Hubungkan Template Desain</Label>
+        {/* IMPLEMENTASIKAN KOMPONEN MULTI-SELECT DI SINI */}
+        {/* Anda bisa menggunakan komponen seperti 'react-select' atau 'shadcn-ui combobox' */}
+        {/* Pilihan yang tersedia adalah 'allDesignTemplates' dari props */}
+        {/* Nilai yang terpilih harus di-set ke data.design_templates (sebagai array of IDs) */}
+        <p className="text-sm text-gray-500 mt-2">
+            Pilih template dari perpustakaan yang relevan untuk produk ini.
+        </p>
+    </div>
+)}
+
+Langkah 2.4: Perbarui Logika Penyimpanan di ProductController
+Di dalam app/Features/Product/ProductController.php, modifikasi method store() dan update() untuk menyinkronkan relasi designTemplates.
 
 // Di dalam blok DB::transaction() setelah produk dibuat atau diupdate:
-if ($request->has('design_templates')) {
-    $product->designTemplates()->sync($request->input('design_templates', []));
-}
+$product->designTemplates()->sync($request->input('design_templates', []));
 
-FASE 3: Implementasi Sisi Customer
-Langkah 3.1: Perbarui ProductDetailController
-Buka app/Http/Controllers/ProductDetailController.php. Di dalam method __invoke() atau show(), pastikan Anda melakukan eager load terhadap relasi designTemplates yang baru.
+Selesaikan semua instruksi di atas secara berurutan.
 
-// Ubah baris load menjadi seperti ini:
-$product->load('category', 'attributeValues.attribute', 'designTemplates');
-
-Langkah 3.2: Refactor Total Halaman Product/Show.tsx
-Buka resources/js/Pages/Product/Show.tsx. Ganti seluruh isinya dengan kode yang ada di design-brief-product-page.md untuk mengimplementasikan UI/UX baru yang mencakup pemilihan opsi desain.
-
-Selesai.
 
