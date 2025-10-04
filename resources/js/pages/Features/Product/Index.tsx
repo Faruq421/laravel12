@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { PageProps, Pagination, BreadcrumbItem } from '@/types';
@@ -150,6 +150,7 @@ export default function Index({ auth, items, filters }: PageProps<{ items: Pagin
     const [search, setSearch] = useState(filters.search || '');
     const [sortBy, setSortBy] = useState(filters.sort_by || 'id_produk');
     const [sortDir, setSortDir] = useState(filters.sort_dir || 'desc');
+    const isInitialMount = useRef(true);
 
     const debouncedSearch = useCallback(
         debounce((value: string) => {
@@ -160,6 +161,10 @@ export default function Index({ auth, items, filters }: PageProps<{ items: Pagin
     );
 
     useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
         debouncedSearch(search);
         return () => debouncedSearch.cancel();
     }, [search, debouncedSearch]);

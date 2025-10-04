@@ -11,7 +11,9 @@ export default defineConfig({
             ssr: 'resources/js/ssr.tsx',
             refresh: true,
         }),
-        react(),
+        react({
+            fastRefresh: false,
+        }),
         tailwindcss(),
         wayfinder({
             formVariants: true,
