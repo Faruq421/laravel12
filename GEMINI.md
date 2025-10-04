@@ -111,6 +111,13 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
+### 4 Oktober 2025
+- **Refactor:** Merombak total halaman detail produk (`Product/Show.tsx`) untuk meningkatkan UI/UX, interaktivitas, dan kualitas visual sesuai dengan brief desain.
+- **Fitur:** Mengganti notifikasi `Toast` standar dengan `Sonner` untuk umpan balik yang lebih modern saat menambahkan produk ke keranjang.
+- **Perbaikan:** Memperbaiki navigasi dari halaman utama ke halaman detail produk dengan mengubah logika controller untuk mencari produk berdasarkan `slug` bukan `ID`.
+- **Perbaikan:** Mengatasi masalah "halaman putih" di halaman detail produk dengan membuat komponen React lebih tangguh terhadap data yang hilang (misalnya, produk tanpa atribut atau kategori).
+- **Chore:** Menambahkan komponen UI (`Separator`, `Sonner`) yang diperlukan dari `shadcn/ui`.
+
 ### 2 Oktober 2025
 - **Fitur:** Mengganti URL produk dari berbasis ID menjadi berbasis `slug` untuk meningkatkan SEO dan keterbacaan.
 - **Fitur:** Detail produk pada halaman detail kini menampilkan data dinamis dari database.

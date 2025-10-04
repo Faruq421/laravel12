@@ -41,7 +41,7 @@ interface PageProps extends InertiaPageProps {
     product: Product
 }
 
-// Komponen untuk menampilkan grup atribut
+// --- KOMPONEN BARU UNTUK SELEKTOR ATRIBUT ---
 const AttributeSelector: React.FC<{
     attributes: Record<string, AttributeValue[]>
     selectedAttributes: Record<string, number>
@@ -74,14 +74,15 @@ const AttributeSelector: React.FC<{
         ))}
     </div>
 )
+// --- AKHIR KOMPONEN BARU ---
 
 export default function ProductShowPage({ product, auth }: PageProps) {
     const [quantity, setQuantity] = useState(1)
+    // State untuk menyimpan atribut yang dipilih: { 'attribute_id': 'value_id' }
     const [selectedAttributes, setSelectedAttributes] = useState<Record<string, number>>({})
 
-    // Mengelompokkan attributeValues berdasarkan nama atribut
+    // Mengelompokkan attributeValues berdasarkan nama atribut (Ukuran, Bahan, dll.)
     const attributes = useMemo(() => {
-        // PERBAIKAN: Tambahkan fallback ke array kosong untuk mencegah error jika attributeValues null
         return (product.attributeValues || []).reduce(
             (acc, value) => {
                 const key = value.attribute.name
@@ -115,11 +116,10 @@ export default function ProductShowPage({ product, auth }: PageProps) {
     const decrementQuantity = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1))
 
     const handleAddToCart = () => {
-        // Logika untuk menambahkan ke keranjang akan ditambahkan di sini
-        // Contoh: router.post('/cart', { productId: product.id_produk, quantity, attributes: selectedAttributes });
-
         toast.success(`${product.nama_produk} berhasil ditambahkan ke keranjang.`)
     }
+
+    const hasAttributes = Object.keys(attributes).length > 0
 
     return (
         <>
@@ -154,14 +154,18 @@ export default function ProductShowPage({ product, auth }: PageProps) {
 
                                 <p className="text-gray-600 leading-relaxed text-lg">{product.deskripsi}</p>
 
-                                <Separator />
-
-                                {/* Selektor Atribut */}
-                                <AttributeSelector
-                                    attributes={attributes}
-                                    selectedAttributes={selectedAttributes}
-                                    onAttributeChange={handleAttributeChange}
-                                />
+                                {/* --- BAGIAN ATRIBUT (RENDER KONDISIONAL) --- */}
+                                {hasAttributes && (
+                                    <>
+                                        <Separator />
+                                        <AttributeSelector
+                                            attributes={attributes}
+                                            selectedAttributes={selectedAttributes}
+                                            onAttributeChange={handleAttributeChange}
+                                        />
+                                    </>
+                                )}
+                                {/* --- AKHIR BAGIAN ATRIBUT --- */}
 
                                 <Separator />
 
