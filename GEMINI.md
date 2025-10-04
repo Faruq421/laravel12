@@ -112,6 +112,14 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 4 Oktober 2025
+- **Refactor (Frontend):** Merombak total logika halaman detail produk (`Product/Show.tsx`) untuk mengimplementasikan sistem pemilihan varian yang interaktif dan andal, sesuai dengan brief teknis. Kode kini menggunakan `useMemo` untuk mengelompokkan atribut dan menghitung harga secara efisien.
+- **Fitur (Frontend):** Mengimplementasikan sistem pemilihan atribut/varian yang wajib. Tombol "Tambah ke Keranjang" kini dinonaktifkan hingga pelanggan memilih satu opsi dari setiap grup atribut yang tersedia (misalnya, Ukuran dan Bahan).
+- **Fitur (Frontend):** Harga total produk kini dihitung dan diperbarui secara dinamis di antarmuka pengguna, merefleksikan harga dasar, harga tambahan dari setiap atribut yang dipilih, dan kuantitas.
+- **UI/UX (Frontend):** Menambahkan komponen `Tooltip` untuk memberikan umpan balik yang jelas kepada pengguna, menjelaskan mengapa tombol "Tambah ke Keranjang" nonaktif.
+- **Perbaikan (Frontend):** Mengatasi *crash* pada halaman detail produk (`Failed to resolve import`) dengan menginstal dan mengonfigurasi komponen `RadioGroup` yang hilang dari `shadcn/ui`.
+- **Perbaikan (Kode):** Memperbaiki kesalahan penulisan `import` React yang menyebabkan error pada saat kompilasi.
+
+### 4 Oktober 2025
 - **Perbaikan (Backend):** Mengatasi masalah "reload ganda" di seluruh aplikasi. Penyebabnya adalah data `quote` yang selalu berubah di setiap *request*, yang kini dibuat konsisten dengan menyimpannya di dalam sesi.
 - **Perbaikan (Frontend):** Memperbaiki bug paginasi di halaman produk admin yang selalu kembali ke halaman pertama. Logika pencarian kini tidak lagi aktif pada saat render awal atau saat berpindah halaman.
 
