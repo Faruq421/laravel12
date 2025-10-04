@@ -112,6 +112,13 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 4 Oktober 2025
+- **Fitur (Backend):** Mengimplementasikan fondasi backend untuk fitur "Opsi Desain" produk, termasuk migrasi database untuk `allow_custom_design` dan tabel `design_templates` beserta relasi *many-to-many* dengan produk.
+- **Fitur (Backend):** Menambahkan logika lengkap pada `DesignTemplateController` untuk mengelola siklus hidup *template* desain, termasuk validasi, unggah file (thumbnail & file desain), pembaruan, dan penghapusan file dari *storage*.
+- **Fitur (Admin):** Memperbarui formulir produk di dasbor admin (`Product/FormPage.tsx`) dengan menambahkan komponen `Switch` untuk opsi "Izinkan Desain Kustom" dan daftar `Checkbox` untuk menautkan produk dengan *template* desain yang tersedia.
+- **Refactor (Backend):** Memperbarui `ProductController` untuk mengirimkan data `designTemplates` ke tampilan formulir dan menangani penyimpanan serta sinkronisasi relasi *template* saat produk dibuat atau diperbarui.
+- **Backend:** Memperbarui halaman detail produk sisi pelanggan (`ProductController@show`) untuk memuat data `designTemplates` terkait, mempersiapkan implementasi di *frontend*.
+
+### 4 Oktober 2025
 - **Refactor (Frontend):** Merombak total logika halaman detail produk (`Product/Show.tsx`) untuk mengimplementasikan sistem pemilihan varian yang interaktif dan andal, sesuai dengan brief teknis. Kode kini menggunakan `useMemo` untuk mengelompokkan atribut dan menghitung harga secara efisien.
 - **Fitur (Frontend):** Mengimplementasikan sistem pemilihan atribut/varian yang wajib. Tombol "Tambah ke Keranjang" kini dinonaktifkan hingga pelanggan memilih satu opsi dari setiap grup atribut yang tersedia (misalnya, Ukuran dan Bahan).
 - **Fitur (Frontend):** Harga total produk kini dihitung dan diperbarui secara dinamis di antarmuka pengguna, merefleksikan harga dasar, harga tambahan dari setiap atribut yang dipilih, dan kuantitas.
