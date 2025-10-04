@@ -94,6 +94,26 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 4 Oktober 2025
+- **Fitur: Saklar Utama Opsi Desain & Peningkatan UI/UX**
+    -   **Backend:** Mengimplementasikan fondasi untuk saklar utama fitur desain.
+        -   Menambahkan kolom boolean `enable_design_feature` ke tabel `products` melalui migrasi database baru.
+        -   Memperbarui model `Product.php` dengan menambahkan `enable_design_feature` ke properti `$fillable` dan `$casts` untuk mass-assignment dan penjaminan tipe data.
+        -   Menambahkan aturan validasi `required|boolean` untuk field baru di dalam `ProductController.php`.
+    -   **Frontend (Panel Admin):** Membangun antarmuka untuk saklar utama pada `Product/FormPage.tsx`.
+        -   Menambahkan komponen `Switch` baru yang terikat pada state `data.enable_design_feature`.
+        -   Membungkus seluruh opsi desain lainnya (izin unggah kustom, area unggah templat) dalam blok render kondisional yang hanya tampil jika saklar utama aktif.
+    -   **Frontend (Halaman Pelanggan):** Mengintegrasikan logika saklar utama pada `Product/Show.tsx`.
+        -   Fungsi `renderDesignOptions()` kini mengembalikan `null` (tidak merender apapun) jika `product.enable_design_feature` bernilai `false`.
+        -   Logika variabel `isDesignSelected` diperbarui agar selalu `true` (mengabaikan validasi desain) saat fitur dinonaktifkan, sehingga tombol "Tambah ke Keranjang" dapat berfungsi.
+        -   Pesan pada `Tooltip` juga disesuaikan agar tidak lagi meminta pelanggan memilih desain jika fiturnya memang tidak aktif untuk produk tersebut.
+- **Peningkatan (UI/UX): Komponen Input Jumlah Produk (*Quantity Stepper*)**
+    -   **Refactor (Frontend):** Merombak total komponen input jumlah pada `Product/Show.tsx` untuk pengalaman pengguna yang superior.
+        -   Mengganti input jumlah standar dengan komponen *stepper* kustom yang terintegrasi secara visual, di mana tombol `-`, input angka, dan tombol `+` digabungkan menjadi satu blok yang solid dan elegan.
+        -   Memperbarui *state management* untuk `quantity` agar dapat menangani input kosong sementara (`string | number`) saat pengguna mengetik.
+        -   Mengimplementasikan *event handler* `onBlur` yang cerdas, yang akan otomatis mengembalikan nilai ke `1` jika input ditinggalkan dalam keadaan kosong atau tidak valid.
+        -   Menambahkan validasi `onChange` untuk hanya memperbolehkan input numerik.
+
+### 4 Oktober 2025
 - **Fitur (Backend):** Mengimplementasikan fondasi backend untuk fitur "Opsi Desain" produk, termasuk migrasi, model, dan relasi.
 - **Fitur (Backend):** Menambahkan logika lengkap pada `DesignTemplateController` untuk mengelola siklus hidup *template* desain (CRUD, unggah file, dll).
 - **Fitur (Admin):** Memperbarui formulir produk (`Product/FormPage.tsx`) dengan `Switch` untuk "Izinkan Desain Kustom" dan `Checkbox` untuk menautkan *template* desain.
