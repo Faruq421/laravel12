@@ -11,8 +11,20 @@ import CategoriesSection from '@/pages/welcome/partials/CategoriesSection';
 import CollectionSection from '@/pages/welcome/partials/CollectionSection';
 import Footer from '@/pages/welcome/partials/Footer';
 
-// Terima 'products' sebagai prop
-export default function Welcome({ auth, products }: PageProps<{ products: any[] }>) {
+// Definisikan tipe data Product di sini agar sesuai dengan data dari backend
+interface Product {
+    id_produk: number;
+    nama_produk: string;
+    slug: string; // Pastikan slug ada di sini
+    harga: number;
+    gambar_url: string;
+    category: {
+        name: string;
+    };
+}
+
+// Gunakan tipe Product yang sudah didefinisikan
+export default function Welcome({ auth, products }: PageProps<{ products: Product[] }>) {
     const [heroRef, heroInView] = useInView({ threshold: 0.2 });
     const [featuresRef, featuresInView] = useInView({ threshold: 0.2 });
     const [categoriesRef, categoriesInView] = useInView({ threshold: 0.2 });

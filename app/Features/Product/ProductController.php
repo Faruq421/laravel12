@@ -35,8 +35,10 @@ class ProductController extends Controller
         ]);
     }
 
-    public function show(Product $product)
+    public function show(string $slug)
     {
+        $product = Product::where('slug', $slug)->firstOrFail();
+
         return Inertia::render('Features/Product/Show', [
             'product' => $product->load('category', 'attributeValues.attribute'),
         ]);
