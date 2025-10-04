@@ -112,6 +112,18 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 4 Oktober 2025
+- **Fitur:** Mengimplementasikan halaman detail produk, memungkinkan pelanggan untuk melihat informasi lengkap item.
+- **Fitur:** Menambahkan fungsionalitas bagi admin untuk memperbarui data produk dari dasbor.
+- **Backend:** Membuat *route* dan *method controller* yang diperlukan untuk menampilkan dan memperbarui produk.
+- **Frontend:** Membangun komponen React baru untuk halaman detail produk.
+
+### 4 Oktober 2025
+- **Fitur:** Mengimplementasikan selektor atribut (misalnya ukuran, bahan) yang interaktif pada halaman detail produk.
+- **Frontend:** Harga produk di halaman detail kini diperbarui secara dinamis berdasarkan pilihan atribut dan kuantitas.
+- **Perbaikan (Backend):** Memperbaiki error 404 pada halaman "Tambah Produk" dan "Edit Produk" dengan mengatur ulang prioritas rute untuk mengatasi konflik antara rute dinamis (`slug`) dan rute statis (`create`).
+- **Perbaikan (Backend):** Mengatasi error SQL saat menyimpan produk baru dengan memperbaiki properti `$fillable` di model `Product` untuk mengizinkan *mass assignment* pada kolom `deskripsi`.
+
+### 4 Oktober 2025
 - **Refactor:** Merombak total halaman detail produk (`Product/Show.tsx`) untuk meningkatkan UI/UX, interaktivitas, dan kualitas visual sesuai dengan brief desain.
 - **Fitur:** Mengganti notifikasi `Toast` standar dengan `Sonner` untuk umpan balik yang lebih modern saat menambahkan produk ke keranjang.
 - **Perbaikan:** Memperbaiki navigasi dari halaman utama ke halaman detail produk dengan mengubah logika controller untuk mencari produk berdasarkan `slug` bukan `ID`.
