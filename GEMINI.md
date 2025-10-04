@@ -102,7 +102,7 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 
 ### Langkah 2: Asisten AI (Gemini)
 1.  Setelah Anda siap mencatat kemajuan, berikan perintah sederhana seperti: **"Tolong perbarui changelog"**.
-2.  Asisten akan menganalisis *commit* terakhir Anda, membuat draf entri changelog, dan meminta persetujuan Anda.
+2.  Asisten akan menganalisis *commit* terakhir Anda, membuat draf entri changelog yang detail, dan meminta persetujuan Anda.
 3.  Setelah Anda setuju, asisten akan secara otomatis menambahkan entri tersebut di bawah ini.
 
 ---

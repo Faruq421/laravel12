@@ -2,213 +2,240 @@ import { Head } from '@inertiajs/react'
 import { Button } from '@/components/ui/button'
 import { Toaster, toast } from 'sonner'
 import { Separator } from '@/components/ui/separator'
-import { ShoppingCart, Plus, Minus, CheckCircle } from 'lucide-react'
+import { ShoppingCart, Plus, Minus } from 'lucide-react'
 import React, { useState, useMemo } from 'react'
 import Header from '@/pages/welcome/partials/Header'
 import Footer from '@/pages/welcome/partials/Footer'
 import { PageProps as InertiaPageProps } from '@/types'
-import { cn } from '@/lib/utils'
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 
-// Definisikan tipe data yang lebih detail untuk props
-interface Attribute {
-    id: number
-    name: string
-}
-
+// Tipe data sesuai dengan brief dari DESIGN.md
 interface AttributeValue {
     id: number
     value: string
-    price: number // Harga tambahan untuk atribut ini
-    attribute: Attribute
+    attribute: {
+        id: number
+        name: string
+    }
+    pivot: {
+        price: number
+    }
 }
 
-interface Category {
-    id: number
-    name: string
-}
-
-interface Product {
+interface ProductData {
     id_produk: number
     nama_produk: string
     deskripsi: string
-    harga: number // Harga dasar produk
+    harga: number
     gambar_url: string
-    category: Category
-    attributeValues: AttributeValue[]
+    category: { name: string }
+    attribute_values: AttributeValue[]
 }
 
 interface PageProps extends InertiaPageProps {
-    product: Product
+    product: ProductData
 }
 
-// --- KOMPONEN BARU UNTUK SELEKTOR ATRIBUT ---
-const AttributeSelector: React.FC<{
-    attributes: Record<string, AttributeValue[]>
-    selectedAttributes: Record<string, number>
-    onAttributeChange: (attributeId: string, valueId: number) => void
-}> = ({ attributes, selectedAttributes, onAttributeChange }) => (
-    <div className="space-y-6">
-        {Object.entries(attributes).map(([attributeName, values]) => (
-            <div key={attributeName}>
-                <h3 className="text-md font-semibold text-gray-800 mb-3">{attributeName}</h3>
-                <div className="flex flex-wrap gap-3">
-                    {values.map(value => {
-                        const isSelected = selectedAttributes[value.attribute.id] === value.id
-                        return (
-                            <Button
-                                key={value.id}
-                                variant={isSelected ? 'default' : 'outline'}
-                                onClick={() => onAttributeChange(String(value.attribute.id), value.id)}
-                                className={cn(
-                                    'transition-all duration-200 ease-in-out transform hover:scale-105',
-                                    isSelected && 'bg-[#FF6500] hover:bg-[#e05a00] text-white shadow-md',
-                                )}
-                            >
-                                {isSelected && <CheckCircle className="w-4 h-4 mr-2" />}
-                                {value.value}
-                            </Button>
-                        )
-                    })}
-                </div>
-            </div>
-        ))}
-    </div>
-)
-// --- AKHIR KOMPONEN BARU ---
-
 export default function ProductShowPage({ product, auth }: PageProps) {
+    // a. Manajemen State
     const [quantity, setQuantity] = useState(1)
-    // State untuk menyimpan atribut yang dipilih: { 'attribute_id': 'value_id' }
-    const [selectedAttributes, setSelectedAttributes] = useState<Record<string, number>>({})
+    const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>({})
 
-    // Mengelompokkan attributeValues berdasarkan nama atribut (Ukuran, Bahan, dll.)
-    const attributes = useMemo(() => {
-        return (product.attributeValues || []).reduce(
+    // b. Pengelompokan & Rendering Atribut
+    const attributeGroups = useMemo(() => {
+        return (product.attribute_values || []).reduce(
             (acc, value) => {
-                const key = value.attribute.name
-                if (!acc[key]) {
-                    acc[key] = []
+                const { name } = value.attribute
+                if (!acc[name]) {
+                    acc[name] = []
                 }
-                acc[key].push(value)
+                acc[name].push(value)
                 return acc
             },
             {} as Record<string, AttributeValue[]>,
         )
-    }, [product.attributeValues])
+    }, [product.attribute_values])
 
-    const handleAttributeChange = (attributeId: string, valueId: number) => {
-        setSelectedAttributes(prev => ({
+    const handleOptionChange = (attributeId: string, valueId: number) => {
+        setSelectedOptions((prev) => ({
             ...prev,
             [attributeId]: valueId,
         }))
     }
 
-    // Kalkulasi harga total berdasarkan harga dasar, atribut terpilih, dan kuantitas
+    // c. Logika Harga Dinamis
     const totalPrice = useMemo(() => {
-        const attributesPrice = Object.values(selectedAttributes).reduce((total, valueId) => {
-            const selectedValue = product.attributeValues.find(v => v.id === valueId)
-            return total + (selectedValue ? selectedValue.price : 0)
+        const attributesPrice = Object.values(selectedOptions).reduce((total, valueId) => {
+            const selectedValue = product.attribute_values.find((v) => v.id === valueId)
+            return total + (selectedValue ? selectedValue.pivot.price : 0)
         }, 0)
         return (product.harga + attributesPrice) * quantity
-    }, [selectedAttributes, quantity, product.harga, product.attributeValues])
+    }, [selectedOptions, quantity, product.harga, product.attribute_values])
 
-    const incrementQuantity = () => setQuantity(prev => prev + 1)
-    const decrementQuantity = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1))
+    // d. Logika Tombol Aksi Kondisional
+    const hasAttributes = Object.keys(attributeGroups).length > 0
+    const areAllOptionsSelected = hasAttributes
+        ? Object.keys(selectedOptions).length === Object.keys(attributeGroups).length
+        : true
 
+    const incrementQuantity = () => setQuantity((prev) => prev + 1)
+    const decrementQuantity = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1))
+
+    // e. Umpan Balik Notifikasi
     const handleAddToCart = () => {
-        toast.success(`${product.nama_produk} berhasil ditambahkan ke keranjang.`)
+        toast.success(`${product.nama_produk} berhasil ditambahkan ke keranjang.`, {
+            description: `Jumlah: ${quantity} | Total: Rp ${totalPrice.toLocaleString('id-ID')}`,
+        })
     }
-
-    const hasAttributes = Object.keys(attributes).length > 0
 
     return (
         <>
             <Head title={product.nama_produk} />
-            <Toaster richColors />
-            <div className="bg-gray-50 text-gray-800 font-sans">
+            <Toaster richColors position='top-center' />
+            <div className='bg-gray-50 font-sans text-gray-800 dark:bg-gray-900 dark:text-gray-200'>
                 <Header auth={auth} />
                 <main>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-                            {/* Kolom Kiri: Gambar Produk */}
-                            <div className="p-4 bg-white rounded-2xl shadow-lg">
-                                <div className="aspect-square w-full overflow-hidden rounded-xl">
+                    <div className='container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8'>
+                        <Breadcrumb className='mb-8'>
+                            <BreadcrumbList>
+                                <BreadcrumbItem>
+                                    <BreadcrumbLink href={route('home')}>Home</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator />
+                                <BreadcrumbItem>
+                                    <BreadcrumbLink href='#'>Products</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator />
+                                <BreadcrumbItem>
+                                    <BreadcrumbPage>{product.nama_produk}</BreadcrumbPage>
+                                </BreadcrumbItem>
+                            </BreadcrumbList>
+                        </Breadcrumb>
+
+                        <div className='grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16'>
+                            <div className='sticky top-24'>
+                                <div className='aspect-square w-full overflow-hidden rounded-xl bg-white shadow-lg'>
                                     <img
                                         src={product.gambar_url}
                                         alt={product.nama_produk}
-                                        className="w-full h-full object-cover transition-transform duration-300 ease-in-out hover:scale-105"
+                                        className='h-full w-full object-cover transition-transform duration-300 ease-in-out hover:scale-105'
                                     />
                                 </div>
                             </div>
 
-                            {/* Kolom Kanan: Informasi & Aksi */}
-                            <div className="flex flex-col gap-6">
+                            <div className='flex flex-col gap-y-6'>
                                 <div>
-                                    <p className="text-md font-semibold text-[#FF6500] uppercase tracking-wide">
-                                        {product.category?.name}
+                                    <p className='font-semibold uppercase tracking-wide text-orange-500'>
+                                        {product.category?.name ?? 'Uncategorized'}
                                     </p>
-                                    <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mt-2">
+                                    <h1 className='mt-1 text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl'>
                                         {product.nama_produk}
                                     </h1>
                                 </div>
 
-                                <p className="text-gray-600 leading-relaxed text-lg">{product.deskripsi}</p>
+                                <p className='text-lg leading-relaxed text-gray-600 dark:text-gray-300'>{product.deskripsi}</p>
 
-                                {/* --- BAGIAN ATRIBUT (RENDER KONDISIONAL) --- */}
                                 {hasAttributes && (
                                     <>
-                                        <Separator />
-                                        <AttributeSelector
-                                            attributes={attributes}
-                                            selectedAttributes={selectedAttributes}
-                                            onAttributeChange={handleAttributeChange}
-                                        />
+                                        <Separator className='my-4' />
+                                        <div className='space-y-6'>
+                                            {Object.entries(attributeGroups).map(([name, values]) => (
+                                                <div key={name}>
+                                                    <h3 className='text-md mb-3 font-semibold text-gray-800 dark:text-gray-200'>
+                                                        {name}
+                                                    </h3>
+                                                    <RadioGroup
+                                                        onValueChange={(valueId) =>
+                                                            handleOptionChange(values[0].attribute.id.toString(), Number(valueId))
+                                                        }
+                                                        className='flex flex-wrap gap-3'
+                                                    >
+                                                        {values.map((value) => (
+                                                            <Label
+                                                                key={value.id}
+                                                                htmlFor={value.id.toString()}
+                                                                className='flex cursor-pointer items-center gap-3 rounded-lg border bg-white px-4 py-2 transition-all hover:bg-gray-100 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50 has-[:checked]:shadow-md dark:bg-gray-800 dark:hover:bg-gray-700'
+                                                            >
+                                                                <RadioGroupItem value={value.id.toString()} id={value.id.toString()} />
+                                                                {value.value}
+                                                                {value.pivot.price > 0 && (
+                                                                    <span className='text-sm text-gray-500'>
+                                                                        (+Rp {value.pivot.price.toLocaleString('id-ID')})
+                                                                    </span>
+                                                                )}
+                                                            </Label>
+                                                        ))}
+                                                    </RadioGroup>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </>
                                 )}
-                                {/* --- AKHIR BAGIAN ATRIBUT --- */}
 
-                                <Separator />
+                                <Separator className='my-4' />
 
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                                    {/* Kuantitas */}
-                                    <div className="flex items-center gap-4">
-                                        <h3 className="text-md font-semibold text-gray-800">Jumlah</h3>
-                                        <div className="flex items-center border rounded-lg">
+                                <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between'>
+                                    <div className='flex items-center gap-4'>
+                                        <h3 className='text-md font-semibold text-gray-800 dark:text-gray-200'>Jumlah</h3>
+                                        <div className='flex items-center rounded-lg border bg-white dark:border-gray-700 dark:bg-gray-800'>
                                             <Button
-                                                variant="ghost"
-                                                size="icon"
+                                                variant='ghost'
+                                                size='icon'
                                                 onClick={decrementQuantity}
-                                                className="rounded-r-none transition-colors duration-200 hover:bg-gray-200"
+                                                className='rounded-r-none transition-colors duration-200 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                disabled={quantity <= 1}
                                             >
-                                                <Minus className="h-4 w-4" />
+                                                <Minus className='h-4 w-4' />
                                             </Button>
-                                            <span className="px-6 text-lg font-bold">{quantity}</span>
+                                            <span className='px-6 text-lg font-bold'>{quantity}</span>
                                             <Button
-                                                variant="ghost"
-                                                size="icon"
+                                                variant='ghost'
+                                                size='icon'
                                                 onClick={incrementQuantity}
-                                                className="rounded-l-none transition-colors duration-200 hover:bg-gray-200"
+                                                className='rounded-l-none transition-colors duration-200 hover:bg-gray-200 dark:hover:bg-gray-700'
                                             >
-                                                <Plus className="h-4 w-4" />
+                                                <Plus className='h-4 w-4' />
                                             </Button>
                                         </div>
                                     </div>
-                                    {/* Harga Total */}
-                                    <p className="text-3xl font-bold text-gray-900 text-right">
+                                    <p className='text-right text-3xl font-bold text-gray-900 dark:text-gray-100'>
                                         Rp {totalPrice.toLocaleString('id-ID')}
                                     </p>
                                 </div>
 
-                                {/* Tombol Aksi */}
-                                <div className="mt-4">
-                                    <Button
-                                        size="lg"
-                                        onClick={handleAddToCart}
-                                        className="bg-[#FF6500] hover:bg-[#e05a00] text-white text-lg w-full py-6 shadow-lg transform transition-transform duration-200 hover:scale-105"
-                                    >
-                                        <ShoppingCart className="mr-3 h-6 w-6" />
-                                        Tambah ke Keranjang
-                                    </Button>
+                                <div className='mt-4'>
+                                    <TooltipProvider delayDuration={100}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className='w-full'>
+                                                    <Button
+                                                        size='lg'
+                                                        onClick={handleAddToCart}
+                                                        disabled={!areAllOptionsSelected}
+                                                        className='w-full transform bg-orange-500 py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-400'
+                                                    >
+                                                        <ShoppingCart className='mr-3 h-6 w-6' />
+                                                        Tambah ke Keranjang
+                                                    </Button>
+                                                </div>
+                                            </TooltipTrigger>
+                                            {!areAllOptionsSelected && (
+                                                <TooltipContent>
+                                                    <p>Harap pilih semua opsi atribut terlebih dahulu.</p>
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                             </div>
                         </div>
