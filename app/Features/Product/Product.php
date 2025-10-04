@@ -100,4 +100,14 @@ class Product extends Model
             'attribute_value_id'
         )->withPivot('price');
     }
+
+    public function designTemplates()
+    {
+        return $this->belongsToMany(
+            \App\Features\DesignTemplate\DesignTemplate::class,
+            'product_design_template',
+            'product_id_produk',
+            'design_template_id'
+        );
+    }
 }

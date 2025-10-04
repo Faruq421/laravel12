@@ -13,28 +13,33 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from '@/lib/utils';
 import { UploadCloud, X, PlusCircle } from 'lucide-react';
 
+import { Checkbox } from '@/components/ui/checkbox';
+
 // --- Tipe Data (tidak ada perubahan) ---
 interface Category { id: number; name: string; }
 interface AttributeValue { id: number; value: string; }
 interface ExistingAttribute { id: number; name: string; values: AttributeValue[]; }
 interface FormOption { value: string; price: number; }
 interface FormAttribute { id: string; name: string; options: FormOption[]; }
+interface DesignTemplate { id: number; name: string; thumbnail_path: string; }
 interface Product {
     id_produk: number; nama_produk: string; deskripsi: string; harga: number; stok: number;
-    gambar: string; category_id: number; status: boolean;
+    gambar: string; category_id: number; status: boolean; allow_custom_design: boolean;
     attribute_values?: {
         id: number; value: string;
         attribute: { id: number; name: string; };
         pivot: { price: number; };
     }[];
+    design_templates?: DesignTemplate[];
 }
 interface FormPageProps extends PageProps {
     item?: Product;
     categories: Category[];
     allAttributes: ExistingAttribute[];
+    designTemplates: DesignTemplate[];
 }
 
-export default function FormPage({ auth, item, categories, allAttributes }: FormPageProps) {
+export default function FormPage({ auth, item, categories, allAttributes, designTemplates }: FormPageProps) {
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Products', href: route('products.index') },
@@ -54,11 +59,14 @@ export default function FormPage({ auth, item, categories, allAttributes }: Form
     };
     const { data, setData, post, processing, errors } = useForm<{
         nama_produk: string; deskripsi: string; harga: number; stok: number; gambar: File | null;
-        category_id: number | string; status: boolean; attributes: FormAttribute[]; _method?: 'PUT';
+        category_id: number | string; status: boolean; attributes: FormAttribute[];
+        allow_custom_design: boolean; design_templates: number[]; _method?: 'PUT';
     }>({
         nama_produk: item?.nama_produk ?? '', deskripsi: item?.deskripsi ?? '', harga: item?.harga ?? 0,
         stok: item?.stok ?? 0, gambar: null, category_id: item?.category_id ?? '', status: item?.status ?? false,
         attributes: formatAttributesFromBackend(item),
+        allow_custom_design: item?.allow_custom_design ?? false,
+        design_templates: item?.design_templates?.map(dt => dt.id) ?? [],
     });
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [currentOptions, setCurrentOptions] = useState<{ [key: string]: string }>({});
@@ -107,6 +115,14 @@ export default function FormPage({ auth, item, categories, allAttributes }: Form
             }
             return attr;
         }));
+    };
+
+    const handleDesignTemplateChange = (templateId: number, checked: boolean) => {
+        if (checked) {
+            setData('design_templates', [...data.design_templates, templateId]);
+        } else {
+            setData('design_templates', data.design_templates.filter(id => id !== templateId));
+        }
     };
 
     const imageSource = previewUrl || (item?.gambar ? `/storage/${item.gambar}` : null);
@@ -266,6 +282,40 @@ export default function FormPage({ auth, item, categories, allAttributes }: Form
                                         <Label htmlFor="stok">Stok</Label>
                                         <Input id="stok" type="number" value={data.stok} onChange={e => setData('stok', parseInt(e.target.value, 10) || 0)} placeholder="100" />
                                         {errors.stok && <p className="text-sm text-red-500 mt-1">{errors.stok}</p>}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Opsi Desain</CardTitle>
+                                    <CardDescription>Atur bagaimana pelanggan dapat menyediakan desain untuk produk ini.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                                        <Switch id="allow_custom_design" checked={data.allow_custom_design} onCheckedChange={(checked) => setData('allow_custom_design', checked)} />
+                                        <Label htmlFor="allow_custom_design">Izinkan Pelanggan Unggah Desain Sendiri</Label>
+                                    </div>
+                                    <div>
+                                        <Label>Pilih Template Desain (Opsional)</Label>
+                                        <p className="text-sm text-gray-500 mb-4">Pilih template yang bisa digunakan pelanggan jika mereka tidak punya desain sendiri.</p>
+                                        <div className="space-y-3 max-h-48 overflow-y-auto p-4 border rounded-lg">
+                                            {designTemplates.length > 0 ? designTemplates.map((template) => (
+                                                <div key={template.id} className="flex items-center space-x-3">
+                                                    <Checkbox
+                                                        id={`template-${template.id}`}
+                                                        checked={data.design_templates.includes(template.id)}
+                                                        onCheckedChange={(checked) => handleDesignTemplateChange(template.id, !!checked)}
+                                                    />
+                                                    <Label htmlFor={`template-${template.id}`} className="font-normal flex items-center gap-3 cursor-pointer">
+                                                        <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className="w-10 h-10 rounded-md object-cover" />
+                                                        {template.name}
+                                                    </Label>
+                                                </div>
+                                            )) : (
+                                                <p className="text-sm text-gray-500 text-center py-4">Belum ada template desain.</p>
+                                            )}
+                                        </div>
+                                        {errors.design_templates && <p className="text-sm text-red-500 mt-1">{errors.design_templates}</p>}
                                     </div>
                                 </CardContent>
                             </Card>

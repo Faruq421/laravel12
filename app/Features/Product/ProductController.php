@@ -40,7 +40,7 @@ class ProductController extends Controller
         $product = Product::where('slug', $slug)->firstOrFail();
 
         return Inertia::render('Features/Product/Show', [
-            'product' => $product->load('category', 'attributeValues.attribute'),
+            'product' => $product->load('category', 'attributeValues.attribute', 'designTemplates'),
         ]);
     }
 
@@ -49,6 +49,7 @@ class ProductController extends Controller
         return Inertia::render('Features/Product/FormPage', [
             'categories' => Category::all(),
             'allAttributes' => Attribute::with('values')->get(),
+            'designTemplates' => \App\Features\DesignTemplate\DesignTemplate::all(),
         ]);
     }
 
@@ -63,6 +64,11 @@ class ProductController extends Controller
             }
             $product = Product::create($validatedData);
             $this->syncAttributes($product, $request->input('attributes', []));
+
+            if ($request->has('design_templates')) {
+                $product->designTemplates()->sync($request->input('design_templates', []));
+            }
+
             return $product;
         });
 
@@ -71,11 +77,12 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $product->load('attributeValues.attribute');
+        $product->load('attributeValues.attribute', 'designTemplates');
         return Inertia::render('Features/Product/FormPage', [
             'item' => $product,
             'categories' => Category::all(),
             'allAttributes' => Attribute::with('values')->get(),
+            'designTemplates' => \App\Features\DesignTemplate\DesignTemplate::all(),
         ]);
     }
 
@@ -95,6 +102,10 @@ class ProductController extends Controller
             }
             $product->update($validatedData);
             $this->syncAttributes($product, $request->input('attributes', []));
+
+            if ($request->has('design_templates')) {
+                $product->designTemplates()->sync($request->input('design_templates', []));
+            }
         });
 
         return redirect()->route('products.index')->with('message', 'Produk berhasil diperbarui.');
@@ -127,6 +138,9 @@ class ProductController extends Controller
             'gambar' => ($productId ? 'nullable' : 'required') . '|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'category_id' => 'required|exists:categories,id',
             'status' => 'required|boolean',
+            'allow_custom_design' => 'required|boolean',
+            'design_templates' => 'nullable|array',
+            'design_templates.*' => 'exists:design_templates,id',
             'attributes' => 'nullable|array',
             'attributes.*.name' => 'required_with:attributes|string|max:255',
             'attributes.*.options' => 'required_with:attributes|array|min:1',
