@@ -112,6 +112,10 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan. Tuj
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
 ### 4 Oktober 2025
+- **Perbaikan (Backend):** Mengatasi masalah "reload ganda" di seluruh aplikasi. Penyebabnya adalah data `quote` yang selalu berubah di setiap *request*, yang kini dibuat konsisten dengan menyimpannya di dalam sesi.
+- **Perbaikan (Frontend):** Memperbaiki bug paginasi di halaman produk admin yang selalu kembali ke halaman pertama. Logika pencarian kini tidak lagi aktif pada saat render awal atau saat berpindah halaman.
+
+### 4 Oktober 2025
 - **Fitur:** Mengimplementasikan halaman detail produk, memungkinkan pelanggan untuk melihat informasi lengkap item.
 - **Fitur:** Menambahkan fungsionalitas bagi admin untuk memperbarui data produk dari dasbor.
 - **Backend:** Membuat *route* dan *method controller* yang diperlukan untuk menampilkan dan memperbarui produk.
