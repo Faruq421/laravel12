@@ -61,13 +61,13 @@ export default function FormPage({ auth, item, categories, allAttributes, design
     const { data, setData, post, processing, errors } = useForm<{
         nama_produk: string; deskripsi: string; harga: number; stok: number; gambar: File | null;
         category_id: number | string; status: boolean; attributes: FormAttribute[];
-        allow_custom_design: boolean; design_templates: number[]; _method?: 'PUT';
+        allow_custom_design: boolean; design_templates: DesignTemplate[]; _method?: 'PUT';
     }>({
         nama_produk: item?.nama_produk ?? '', deskripsi: item?.deskripsi ?? '', harga: item?.harga ?? 0,
         stok: item?.stok ?? 0, gambar: null, category_id: item?.category_id ?? '', status: item?.status ?? false,
         attributes: formatAttributesFromBackend(item),
         allow_custom_design: item?.allow_custom_design ?? false,
-        design_templates: item?.design_templates?.map(dt => dt.id) ?? [],
+        design_templates: item?.design_templates ?? [],
     });
 
     // --- State & Logic untuk Gambar Produk ---
@@ -115,33 +115,20 @@ export default function FormPage({ auth, item, categories, allAttributes, design
     };
 
     // --- State & Logic untuk Template Desain ---
-    const [linkedTemplates, setLinkedTemplates] = useState<DesignTemplate[]>(item?.design_templates ?? []);
     const [isUploading, setIsUploading] = useState(false);
 
     const handleDrop = useCallback((acceptedFiles: File[]) => {
-        if (!item) {
-            toast.error("Fitur ini hanya untuk mode edit", {
-                description: "Simpan produk sebagai draf terlebih dahulu sebelum mengunggah template.",
-            });
-            return;
-        }
-
         setIsUploading(true);
         const uploadPromises = acceptedFiles.map(file => {
             const formData = new FormData();
             formData.append('file', file);
-            // KIRIM ID PRODUK BERSAMA FILE
-            if (item) {
-                formData.append('product_id', String(item.id_produk));
-            }
             return axios.post(route('design-templates.upload'), formData);
         });
 
         Promise.all(uploadPromises)
             .then(responses => {
                 const newTemplates = responses.map(res => res.data);
-                setLinkedTemplates(current => [...current, ...newTemplates]);
-                setData('design_templates', currentIds => [...currentIds, ...newTemplates.map(t => t.id)]);
+                setData('design_templates', [...data.design_templates, ...newTemplates]);
                 toast.success(`${newTemplates.length} template berhasil diunggah.`);
             })
             .catch(error => {
@@ -151,7 +138,7 @@ export default function FormPage({ auth, item, categories, allAttributes, design
             .finally(() => {
                 setIsUploading(false);
             });
-    }, [setData]);
+    }, [data.design_templates, setData]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop: handleDrop,
@@ -160,8 +147,7 @@ export default function FormPage({ auth, item, categories, allAttributes, design
     });
 
     const unlinkTemplate = (templateId: number) => {
-        setData('design_templates', data.design_templates.filter(id => id !== templateId));
-        setLinkedTemplates(linkedTemplates.filter(t => t.id !== templateId));
+        setData('design_templates', data.design_templates.filter(t => t.id !== templateId));
     };
 
     // --- Submit Handler ---
@@ -356,11 +342,11 @@ export default function FormPage({ auth, item, categories, allAttributes, design
                                                 </div>
                                             )}
                                         </div>
-                                        {linkedTemplates.length > 0 && (
+                                        {data.design_templates.length > 0 && (
                                             <div className="mt-4 space-y-2">
                                                 <Label>Template Tertaut</Label>
                                                 <div className="grid grid-cols-3 gap-4">
-                                                    {linkedTemplates.map(template => (
+                                                    {data.design_templates.map(template => (
                                                         <div key={template.id} className="relative group">
                                                             <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className="w-full h-24 object-cover rounded-md" />
                                                             <button type="button" onClick={() => unlinkTemplate(template.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">

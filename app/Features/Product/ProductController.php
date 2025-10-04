@@ -64,7 +64,10 @@ class ProductController extends Controller
             }
             $product = Product::create($validatedData);
             $this->syncAttributes($product, $request->input('attributes', []));
-            $product->designTemplates()->sync($request->input('design_templates', []));
+
+            // Ekstrak ID dari array of objects
+            $templateIds = collect($request->input('design_templates', []))->pluck('id')->all();
+            $product->designTemplates()->sync($templateIds);
 
             return $product;
         });
@@ -99,7 +102,10 @@ class ProductController extends Controller
             }
             $product->update($validatedData);
             $this->syncAttributes($product, $request->input('attributes', []));
-            $product->designTemplates()->sync($request->input('design_templates', []));
+
+            // Ekstrak ID dari array of objects
+            $templateIds = collect($request->input('design_templates', []))->pluck('id')->all();
+            $product->designTemplates()->sync($templateIds);
         });
 
         return redirect()->route('products.index')->with('message', 'Produk berhasil diperbarui.');
@@ -134,7 +140,7 @@ class ProductController extends Controller
             'status' => 'required|boolean',
             'allow_custom_design' => 'required|boolean',
             'design_templates' => 'nullable|array',
-            'design_templates.*' => 'exists:design_templates,id',
+            'design_templates.*.id' => 'exists:design_templates,id',
             'attributes' => 'nullable|array',
             'attributes.*.name' => 'required_with:attributes|string|max:255',
             'attributes.*.options' => 'required_with:attributes|array|min:1',
