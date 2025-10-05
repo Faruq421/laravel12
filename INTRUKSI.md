@@ -1,59 +1,138 @@
-# Brief Desain & Teknis v3: Halaman Detail Produk "Semua dalam Satu"
+# Brief Desain & Teknis v4: Alur Keranjang Belanja & Manajemen Pesanan
 
 ## 1. Visi & Tujuan Utama
 
-Lakukan refactoring total pada file `resources/js/Pages/Features/Product/Show.tsx`. Tujuannya adalah untuk menciptakan sebuah "Pusat Kustomisasi Produk" yang menggabungkan galeri gambar yang elegan (inspirasi dari **Referensi 1**) dengan panel aksi yang sangat fungsional dan informatif (inspirasi dari **Referensi 2**).
+Mengimplementasikan alur kerja e-commerce lengkap dari awal hingga akhir. Ini mencakup pengalaman pelanggan (menambah produk ke keranjang, checkout) dan panel admin (manajemen pesanan). Tujuannya adalah menciptakan sistem yang fungsional, intuitif, dan terintegrasi penuh, dengan antarmuka yang modern sesuai referensi desain yang diberikan dan standar e-commerce Indonesia.
 
-Semua fungsionalitas yang sudah ada—pemilihan atribut, pemilihan template desain, dan unggah desain kustom—harus diintegrasikan secara mulus ke dalam desain baru ini, bukan dihilangkan. Pengalaman pengguna harus terasa intuitif, di mana semua pilihan dan informasi berada dalam satu alur yang logis.
+---
 
-## 2. Persyaratan Implementasi Teknis
+## BAGIAN A: FONDASI & BACKEND
 
-### a. Struktur & Layout Utama
--   Gunakan layout grid 2 kolom utama (`lg:grid-cols-2`).
--   **Kolom Kiri:** Didedikasikan untuk Galeri Gambar Produk.
--   **Kolom Kanan:** Didedikasikan untuk Panel Aksi & Informasi yang bersifat *sticky*.
+### Langkah 1: Migrasi & Struktur Database
+Kita akan membuat tiga tabel baru yang menjadi tulang punggung sistem pesanan.
 
-### b. Kolom Kiri: Galeri Gambar Interaktif
--   **Komponen Utama:** Gunakan komponen `Carousel` dari `shadcn/ui`.
--   **Gambar Utama:** Tampilkan satu gambar produk yang besar dan jelas.
--   **Galeri Thumbnail:** Di bawah gambar utama, tampilkan galeri *thumbnail* yang dapat di-klik. Galeri ini harus berisi:
-    1.  Gambar utama produk (`product.gambar_url`).
-    2.  Gambar-gambar produk tambahan (`product.product_images`).
-    3.  *Thumbnail* dari semua *template* desain yang tersedia (`product.design_templates`).
--   **Interaktivitas:** Mengklik *thumbnail* (baik itu gambar produk atau *template* desain) harus mengubah gambar utama yang ditampilkan di *carousel*. Ini memberikan visualisasi langsung kepada pengguna.
+**a. Tabel `orders`:** Menyimpan informasi utama setiap pesanan.
+-   `php artisan make:migration create_orders_table`
+-   **Kolom:**
+    -   `id` (Primary Key)
+    -   `user_id` (Foreign Key ke tabel `users`)
+    -   `customer_id` (Foreign Key ke tabel `customers`, jika ada)
+    -   `order_status` (string, default: 'pending'. Contoh: 'pending', 'processing', 'shipped', 'completed', 'cancelled')
+    -   `total_price` (decimal)
+    -   `shipping_address` (text/json, untuk menyimpan snapshot alamat)
+    -   `shipping_cost` (decimal, default: 0)
+    -   `shipping_method` (string, misal: 'JNE REG', 'GoSend Instant')
+    -   `payment_method` (string, misal: 'BCA Virtual Account')
+    -   `payment_status` (string, default: 'unpaid'. Contoh: 'unpaid', 'paid', 'expired')
+    -   `estimated_completion_date` (date, dapat diisi oleh admin)
+    -   `admin_notes` (text, catatan dari admin untuk pesanan)
+    -   `timestamps`
 
-### c. Kolom Kanan: Panel Aksi & Informasi Terpusat
--   **Wadah Utama:** Bungkus seluruh kolom kanan ini dalam sebuah komponen `<Card>` dari `shadcn/ui` dengan `shadow-lg` agar terlihat menonjol.
--   **Bagian 1: Informasi Produk**
-    -   Tampilkan `Breadcrumb` navigasi.
-    -   Tampilkan nama kategori, nama produk, dan komponen `StarRating`.
--   **Bagian 2: Pusat Kustomisasi (di dalam `CardContent`)**
-    -   Gunakan `<Separator />` untuk memisahkan setiap bagian kustomisasi.
-    -   **Pilihan Varian (Atribut):** Untuk setiap grup atribut, gunakan `RadioGroup` dengan `<Label>` yang bisa di-klik. Desainnya harus jelas dan mudah dipilih.
-    -   **Opsi Desain:**
-        -   Gunakan komponen `Tabs` dengan dua pilihan: "Pilih dari Template" dan "Unggah Desain Sendiri".
-        -   **Tab "Pilih dari Template":** Tampilkan galeri kecil dari *thumbnail template* yang tersedia. Memberikan efek visual (misal: border atau ikon centang) pada *template* yang dipilih. Mengklik *template* di sini juga harus mengubah gambar utama di galeri sebelah kiri.
-        -   **Tab "Unggah Desain Sendiri":** Gunakan komponen *dropzone* yang sudah ada untuk fungsionalitas unggah. Tampilkan *preview* gambar yang diunggah.
-    -   **Jumlah & Catatan:**
-        -   Sediakan komponen *stepper* (tombol +/-) untuk input kuantitas.
-        -   Sediakan komponen `<Textarea>` untuk catatan pesanan opsional.
--   **Bagian 3: Rekap Harga & Aksi (di dalam `CardFooter`)**
-    -   **Rekap Harga Dinamis:**
-        -   Tampilkan "Harga Dasar".
-        -   Tampilkan "Biaya Tambahan" (dari total harga varian yang dipilih).
-        -   Gunakan `<Separator />`.
-        -   Tampilkan "Total Harga" akhir dengan font tebal dan ukuran lebih besar.
-    -   **Tombol Aksi (CTA):**
-        -   Buat tombol "Tambah ke Keranjang" sebagai tombol utama (warna aksen).
-        -   Tambahkan tombol "Beli Sekarang" sebagai tombol sekunder (`variant="outline"`).
-        -   **Logika Validasi:** Tombol harus *disabled* jika:
-            1.  Produk memiliki varian, tetapi belum semuanya dipilih.
-            2.  Fitur desain diaktifkan, tetapi pengguna belum memilih *template* atau mengunggah desain.
-        -   Gunakan `<Tooltip>` untuk memberikan pesan yang jelas saat tombol *disabled*.
+**b. Tabel `order_items`:** Menyimpan setiap produk dalam sebuah pesanan.
+-   `php artisan make:migration create_order_items_table`
+-   **Kolom:**
+    -   `id`
+    -   `order_id` (Foreign Key ke `orders`)
+    -   `product_id_produk` (Foreign Key ke `products`)
+    -   `quantity` (integer)
+    -   `price` (decimal, harga produk saat checkout)
+    -   `options` (json, untuk menyimpan snapshot varian, desain, dan catatan. **Sangat Penting!**)
+    -   `timestamps`
 
-### d. Bagian Bawah Halaman: Informasi Tambahan
--   Di luar grid utama, di bagian bawah halaman, gunakan komponen `Tabs` untuk mengorganisir "Deskripsi Lengkap", "Spesifikasi", dan "Ulasan".
+### Langkah 2: Scaffolding Fitur & Model
+-   Gunakan perintah kustom kita untuk membuat kerangka fitur `Order`.
+    -   `php artisan make:feature Order`
+-   Buat model `OrderItem` secara manual.
+-   Definisikan relasi pada model:
+    -   `Order` `hasMany` `OrderItem`.
+    -   `Order` `belongsTo` `User`.
+    -   `OrderItem` `belongsTo` `Order`.
+    -   `OrderItem` `belongsTo` `Product`.
+    -   `User` `hasMany` `Order`.
 
-## 3. Output yang Diharapkan
+### Langkah 3: Logika Keranjang Belanja (Berbasis Sesi)
+-   Buat `CartController` baru (`php artisan make:controller Features/Cart/CartController`).
+-   **Rute (di `web.php`):**
+    -   `POST /cart` -> `CartController@add`
+    -   `PATCH /cart/{productId}` -> `CartController@update`
+    -   `DELETE /cart/{productId}` -> `CartController@remove`
+-   **Logika Controller:**
+    -   `add`: Menambahkan produk beserta varian, desain, dan kuantitas ke dalam `session('cart')`.
+    -   `update`: Mengubah kuantitas item di dalam sesi.
+    -   `remove`: Menghapus item dari sesi.
 
-Satu file kode lengkap untuk `resources/js/Pages/Features/Product/Show.tsx` yang sudah dirancang ulang sepenuhnya, memenuhi semua persyaratan di atas. Kode harus bersih, fungsional, dan mengintegrasikan semua fitur pemesanan ke dalam desain baru yang superior.
+### Langkah 4: Berbagi Data Keranjang Global
+-   Modifikasi middleware `HandleInertiaRequests` untuk membagikan data `session('cart')` ke semua halaman. Ini memungkinkan *header* untuk selalu menampilkan jumlah item keranjang yang terbaru.
+
+### Langkah 5: Logika Checkout & Manajemen Pesanan (di `OrderController`)
+-   **Method `store` (untuk Pelanggan):**
+    1.  Validasi data (alamat, metode pengiriman).
+    2.  Ambil data keranjang dari sesi.
+    3.  Buat entri baru di tabel `orders` dan `order_items`.
+    4.  Kosongkan sesi keranjang.
+    5.  Redirect ke halaman "Terima Kasih" atau detail pesanan.
+-   **Method `index` & `show` (untuk Admin):**
+    1.  Lindungi dengan middleware `role:admin`.
+    2.  `index`: Tampilkan semua pesanan dengan paginasi dan filter.
+    3.  `show`: Tampilkan detail satu pesanan, termasuk item dan informasi pelanggan.
+-   **Method `update` (untuk Admin):**
+    1.  Validasi input dari admin.
+    2.  Perbarui `order_status`, `estimated_completion_date`, dan `admin_notes`.
+
+---
+
+## BAGIAN B: FRONTEND (PENGALAMAN PELANGGAN)
+
+### Langkah 6: Komponen Keranjang Mini (`CartSheet.tsx`)
+-   Buat komponen baru `resources/js/components/CartSheet.tsx`.
+-   Gunakan komponen `<Sheet>` dari `shadcn/ui`.
+-   Tampilkan daftar produk dari *props* keranjang global.
+-   Untuk setiap item, tampilkan gambar mini, nama, harga, dan kuantitas.
+-   Sediakan tombol +/- untuk mengubah kuantitas (memanggil rute `PATCH /cart/{id}`).
+-   Sediakan tombol hapus (memanggil rute `DELETE /cart/{id}`).
+-   Tampilkan subtotal.
+-   Sediakan tombol "Lihat Keranjang" dan "Checkout".
+
+### Langkah 7: Integrasi Header
+-   Modifikasi komponen `Header.tsx`.
+-   Tambahkan ikon keranjang belanja dengan *badge* yang menunjukkan jumlah item.
+-   Jumlah item diambil dari *props* keranjang global.
+-   Mengklik ikon akan membuka `CartSheet`.
+
+### Langkah 8: Halaman Checkout (`Features/Checkout/Index.tsx`)
+-   Buat halaman Inertia baru.
+-   Gunakan layout grid 2 kolom.
+-   **Kolom Kiri (Formulir):**
+    -   Formulir Alamat Pengiriman:
+        -   Gunakan input standar Indonesia: Nama Penerima, No. Telepon, Alamat Lengkap, Provinsi, Kota/Kabupaten, Kecamatan, Kode Pos.
+        -   Gunakan `<Select>` dari `shadcn/ui` untuk Provinsi dan Kota (nantinya diisi oleh API RajaOngkir).
+    -   Pilihan Metode Pengiriman: Tampilkan pilihan kurir setelah alamat diisi.
+    -   Pilihan Metode Pembayaran.
+-   **Kolom Kanan (Ringkasan Pesanan):**
+    -   Gunakan `<Card>` untuk membungkus ringkasan.
+    -   Tampilkan kembali semua item di keranjang.
+    -   Tampilkan rincian biaya: Subtotal, Biaya Pengiriman, Total.
+    -   Tombol "Bayar Sekarang" yang akan memicu `OrderController@store`.
+
+---
+
+## BAGIAN C: FRONTEND (PANEL ADMIN)
+
+### Langkah 9: Halaman Manajemen Pesanan (`Features/Order/Index.tsx`)
+-   Buat halaman Inertia baru untuk admin.
+-   Gunakan komponen `DataTable` yang sudah ada atau buat yang baru untuk menampilkan daftar pesanan.
+-   **Kolom Tabel:** ID Pesanan, Nama Pelanggan, Tanggal, Total Harga, Status Pesanan.
+-   Sediakan fitur pencarian dan filter berdasarkan status.
+-   Setiap baris dapat di-klik untuk melihat detail pesanan.
+
+### Langkah 10: Halaman Detail Pesanan (`Features/Order/Show.tsx`)
+-   Buat halaman Inertia baru untuk admin.
+-   Tampilkan semua informasi pesanan dalam beberapa `<Card>`:
+    -   **Card 1: Detail Pesanan:** Tampilkan status, tanggal, total.
+    -   **Card 2: Detail Pelanggan:** Tampilkan nama, email, dan alamat pengiriman.
+    -   **Card 3: Item Pesanan:** Tampilkan daftar produk yang dipesan, lengkap dengan varian dan desain yang dipilih.
+    -   **Card 4: Aksi Admin:**
+        -   Gunakan `<Select>` untuk mengubah `order_status`.
+        -   Gunakan `<DatePicker>` untuk mengatur `estimated_completion_date`.
+        -   Gunakan `<Textarea>` untuk `admin_notes`.
+        -   Tombol "Simpan Perubahan" untuk memicu `OrderController@update`.

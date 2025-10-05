@@ -25,21 +25,10 @@ import Footer from '@/pages/welcome/partials/Footer';
 import { ProductCard } from '@/components/ProductCard'; // Import ProductCard
 
 // --- Tipe Data ---
-interface ProductImage { id: number; image_path: string; }
-interface AttributeValue { id: number; value: string; attribute: { id: number; name: string; }; pivot: { price: number; }; }
-interface DesignTemplate { id: number; name: string; thumbnail_path: string; }
-interface BaseProduct {
-    slug: string;
-    gambar_url: string;
-    nama_produk: string;
-    category: { name: string; };
-    harga: number;
-}
 interface ProductData extends BaseProduct {
     id_produk: number;
     deskripsi: string;
     attribute_values: AttributeValue[];
-    product_images: ProductImage[];
     allow_custom_design: boolean;
     design_templates: DesignTemplate[];
     enable_design_feature: boolean;
@@ -84,7 +73,6 @@ const ProductGallery = ({ product, onTemplateSelect, selectedTemplateId }: {
     const galleryItems: GalleryItem[] = useMemo(() => {
         const items: GalleryItem[] = [];
         items.push({ type: 'image', thumb: product.gambar_url, full: product.gambar_url, id: 'main' });
-        (product.product_images || []).forEach(img => items.push({ type: 'image', thumb: `/storage/${img.image_path}`, full: `/storage/${img.image_path}`, id: img.id }));
         (product.design_templates || []).forEach(tmpl => items.push({ type: 'template', thumb: `/storage/${tmpl.thumbnail_path}`, full: `/storage/${tmpl.thumbnail_path}`, id: tmpl.id }));
         return items;
     }, [product]);
@@ -223,7 +211,7 @@ export default function ProductShowPage({ product, auth, related_products }: Pag
                         {/* Bagian Atas: Galeri & Panel Aksi */}
                         <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
                             <ProductGallery product={product} onTemplateSelect={(index) => {
-                                const tmpl = product.design_templates[index - (1 + (product.product_images?.length ?? 0))];
+                                const tmpl = product.design_templates[index - 1];
                                 if (tmpl) handleSelectTemplate(tmpl);
                             }} selectedTemplateId={selectedTemplate?.id ?? null} />
 

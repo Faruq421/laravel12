@@ -93,6 +93,19 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
+### 5 Oktober 2025
+- **Perbaikan Kritis: Routing Admin & Stabilitas Halaman Detail Produk**
+    -   **Masalah:** Ditemukan error `Route [dashboard] not defined` saat admin login. Meskipun komponen `dashboard.tsx` ada, tidak ada rute backend yang terhubung dengannya.
+    -   **Perbaikan (Backend):** Menambahkan rute `/dashboard` baru di `routes/web.php` dengan nama `dashboard`. Rute ini dilindungi oleh *middleware* `auth` dan `role:admin`, dan secara spesifik merender komponen Inertia `dashboard`.
+    -   **Perbaikan (Backend):** Memastikan logika di `AuthenticatedSessionController@store` mengarahkan admin ke `route('dashboard')` setelah login.
+    -   **Perbaikan (Frontend):** Memastikan semua referensi ke dasbor di antarmuka pengguna, seperti item menu navigasi (`lib/navigation.ts`) dan tautan logo (`components/app-header.tsx`), menunjuk ke rute `dashboard` yang baru dibuat.
+    -   **Catatan Tambahan:** Perbaikan ini mengoreksi upaya sebelumnya yang salah mengarahkan admin ke halaman `products.index`.
+- **Perbaikan: Masalah Rute Ziggy & Pendaftaran Rute Fitur**
+    -   **Masalah:** Setelah login, admin terjebak di halaman login karena error JavaScript `Ziggy error: route 'products.index' is not in the route list`.
+    -   **Akar Masalah:** Sistem routing Laravel di `bootstrap/app.php` tidak secara otomatis memuat file rute yang berada di dalam subdirektori `routes/features`, sehingga rute-rute tersebut tidak diketahui oleh Ziggy.
+    -   **Perbaikan (Backend):** Memodifikasi `bootstrap/app.php` untuk secara dinamis memindai dan mendaftarkan semua file rute dari direktori `routes/features`.
+    -   **Perbaikan (Infrastruktur):** Menjalankan `php artisan route:clear` dan `php artisan ziggy:generate` untuk membersihkan cache lama dan membuat ulang file `ziggy.js` dengan daftar rute yang lengkap.
+
 ### 4 Oktober 2025
 - **Fitur: Saklar Utama Opsi Desain & Peningkatan UI/UX**
     -   **Backend:** Mengimplementasikan fondasi untuk saklar utama fitur desain.
@@ -152,10 +165,10 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 
 ### 2 Oktober 2025
 - **Fitur:** Mengganti URL produk dari berbasis ID menjadi berbasis `slug` untuk meningkatkan SEO.
-- **Fitur:** Detail produk pada halaman detail kini menampilkan data dinamis dari database.
-- **UI/UX:** Menyederhanakan halaman detail produk dengan menghapus galeri thumbnail.
-- **Backend:** Menambahkan kolom `slug`, memperbarui model `Product` untuk membuat `slug` otomatis, dan membuat *command* Artisan untuk mengisi `slug` pada data lama.
-- **Frontend:** Memperbarui semua tautan produk untuk menggunakan `slug`.
+-   **Fitur:** Detail produk pada halaman detail kini menampilkan data dinamis dari database.
+-   **UI/UX:** Menyederhanakan halaman detail produk dengan menghapus galeri thumbnail.
+-   **Backend:** Menambahkan kolom `slug`, memperbarui model `Product` untuk membuat `slug` otomatis, dan membuat *command* Artisan untuk mengisi `slug` pada data lama.
+-   **Frontend:** Memperbarui semua tautan produk untuk menggunakan `slug`.
 
 ### 2 Oktober 2025
 - **Fitur:** Mengimplementasikan halaman detail produk untuk pelanggan.

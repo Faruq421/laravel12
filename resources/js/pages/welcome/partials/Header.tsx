@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { type PageProps } from '@/types';
 import { route } from 'ziggy-js';
-import { Search, ShoppingCart, User, Menu, ChevronDown, LogOut, UserCircle, Package, Printer, BookOpen, Gift, Archive, Phone, Mail, Briefcase } from 'lucide-react';
+import { Search, User, Menu, ChevronDown, LogOut, UserCircle, Package, Printer, Gift, Briefcase, Phone, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,6 +13,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CartSheet } from '@/components/CartSheet';
 
 const productCategories = [
     { title: 'Promosi & Marketing', icon: <Printer className="h-5 w-5 text-[#FF6500]" />, items: ['Digital Printing', 'Display Promotion', 'Large Format', 'Sticker', 'NameCard & Invitation'] },
@@ -24,7 +25,6 @@ export default function Header({ auth }: PageProps) {
     const { user } = auth;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
-    const [isMobileCategoryOpen, setIsMobileCategoryOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
 
     useEffect(() => {
@@ -70,12 +70,13 @@ export default function Header({ auth }: PageProps) {
                     <Link href="#" className="text-gray-700 hover:text-[#FF6500]">Portofolio</Link>
                 </div>
 
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 md:space-x-4">
                     <div className="hidden md:block relative"><Input type="search" placeholder="Cari produk..." className="pl-10 rounded-full" /><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /></div>
-                    <Link href="#" className="relative text-gray-600 hover:text-[#FF6500]"><ShoppingCart className="h-6 w-6" /><span className="absolute -top-2 -right-2 bg-[#C40C0C] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span></Link>
+                    
+                    <CartSheet />
+
                     <Button asChild className="hidden lg:inline-flex bg-[#FF6500] hover:bg-[#C40C0C] text-white"><Link href="#">Minta Penawaran</Link></Button>
 
-                    {/* --- KODE PROFIL PENGGUNA YANG DIKEMBALIKAN --- */}
                     {user ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -90,7 +91,7 @@ export default function Header({ auth }: PageProps) {
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 {user.is_admin && (
-                                    <DropdownMenuItem asChild><Link href={route('dashboard')}><UserCircle className="mr-2 h-4 w-4" /><span>Admin Dashboard</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href={route('products.index')}><UserCircle className="mr-2 h-4 w-4" /><span>Admin Dashboard</span></Link></DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem asChild><Link href="#"><UserCircle className="mr-2 h-4 w-4" /><span>Profil Saya</span></Link></DropdownMenuItem>
                                 <DropdownMenuItem asChild><Link href="#"><Package className="mr-2 h-4 w-4" /><span>Pesanan Saya</span></Link></DropdownMenuItem>
@@ -114,4 +115,3 @@ export default function Header({ auth }: PageProps) {
         </header>
     );
 }
-

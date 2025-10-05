@@ -14,5 +14,5 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('products')->name(
     Route::delete('/{product:id_produk}', [ProductController::class, 'destroy'])->name('destroy');
 });
 
-// Rute untuk publik (tidak perlu login)
+// Rute untuk publik (tidak perlu login) - DITEMPATKAN DI BAWAH SETELAH RUTE ADMIN
 Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
