@@ -1,4 +1,4 @@
-import { AdminLayout } from '@/layouts/AdminLayout';
+import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
 import {
     Card,
@@ -25,18 +25,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
-import { PageProps, PaginatedResponse } from '@/types';
+import { PageProps, PaginatedResponse, BreadcrumbItem } from '@/types';
 import { Order } from '@/types/order';
+import { route } from 'ziggy-js';
 
 type OrderIndexProps = PageProps & {
     orders: PaginatedResponse<Order>;
 };
 
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Orders',
+        href: route('orders.index'),
+    },
+];
+
 export default function OrderIndex({ auth, orders }: OrderIndexProps) {
     return (
-        <AdminLayout user={auth.user}>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Orders" />
-            <div className="space-y-4">
+            <div className="space-y-4 p-4 sm:p-6 lg:p-8">
                 <Card>
                     <CardHeader>
                         <CardTitle>Orders</CardTitle>
@@ -123,6 +131,6 @@ export default function OrderIndex({ auth, orders }: OrderIndexProps) {
                     </CardContent>
                 </Card>
             </div>
-        </AdminLayout>
+        </AppLayout>
     );
 }
