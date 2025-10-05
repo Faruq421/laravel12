@@ -39,8 +39,16 @@ class ProductController extends Controller
     {
         $product = Product::where('slug', $slug)->firstOrFail();
 
+        // Ambil produk terkait: 4 produk dari kategori yang sama, kecuali produk ini sendiri.
+        $related_products = Product::where('category_id', $product->category_id)
+            ->where('id_produk', '!=', $product->id_produk)
+            ->inRandomOrder()
+            ->limit(4)
+            ->get();
+
         return Inertia::render('Features/Product/Show', [
-            'product' => $product->load('category', 'attributeValues.attribute', 'designTemplates'),
+            'product' => $product->load('category', 'attributeValues.attribute', 'designTemplates', 'product_images'),
+            'related_products' => $related_products,
         ]);
     }
 
