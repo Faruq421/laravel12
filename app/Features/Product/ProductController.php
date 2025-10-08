@@ -3,6 +3,7 @@
 namespace App\Features\Product;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -10,6 +11,12 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
+    public function quickView(Product $product): JsonResponse
+    {
+        $product->load(['attributes.values', 'designTemplates']);
+        return response()->json($product);
+    }
+
     // ... method index() Anda tidak perlu diubah ...
     public function index(Request $request)
     {

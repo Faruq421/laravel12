@@ -1,16 +1,17 @@
-import React, { useState } from 'react'; // PERBAIKAN: Hapus tanda kutip (') di sekitar useState.
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from '@inertiajs/react';
 import { ShoppingCart } from 'lucide-react';
+import { ProductQuickView } from '@/components/ProductQuickView'; // Import komponen modal
 
-// Tipe data untuk satu produk, agar kode lebih aman dan mudah dibaca
+// Tipe data untuk satu produk
 interface Product {
     id_produk: number;
     nama_produk: string;
-    slug: string; // <-- Tambahkan slug
+    slug: string;
     harga: number;
-    gambar_url: string; // Menggunakan URL yang sudah diproses dari backend
+    gambar_url: string;
     category: {
         name: string;
     };
@@ -25,6 +26,16 @@ interface CollectionSectionProps {
 export default function CollectionSection({ isInView, products }: CollectionSectionProps) {
     const [activeFilter, setActiveFilter] = useState('Newest');
     const filters = ['Newest', 'Top Sell', 'Popular', 'Trending', 'Top Rated'];
+
+    // State untuk mengelola modal Quick View
+    const [isQuickViewOpen, setQuickViewOpen] = useState(false);
+    const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null);
+
+    // Fungsi untuk membuka modal
+    const handleOpenQuickView = (slug: string) => {
+        setSelectedProductSlug(slug);
+        setQuickViewOpen(true);
+    };
 
     return (
         <section className={`bg-slate-50 py-20 text-center transition-all duration-1000 ease-out ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
@@ -59,7 +70,12 @@ export default function CollectionSection({ isInView, products }: CollectionSect
                                 </Link>
                                 <div className="p-5 bg-white border-t border-gray-100 flex justify-between items-center">
                                     <p className="font-bold text-xl text-gray-900">Rp {product.harga.toLocaleString('id-ID')}</p>
-                                    <Button size="icon" className="bg-[#FF6500] hover:bg-[#C40C0C] text-white shadow-md">
+                                    {/* Tombol diubah untuk membuka Quick View */}
+                                    <Button
+                                        size="icon"
+                                        className="bg-[#FF6500] hover:bg-[#C40C0C] text-white shadow-md"
+                                        onClick={() => handleOpenQuickView(product.slug)}
+                                    >
                                         <ShoppingCart className="h-5 w-5" />
                                     </Button>
                                 </div>
@@ -74,6 +90,15 @@ export default function CollectionSection({ isInView, products }: CollectionSect
                     <Button size="lg" variant="outline" className="border-2 border-[#FF6500] text-[#FF6500] hover:bg-[#FF6500] hover:text-white transition-colors duration-300">Lihat Semua Koleksi</Button>
                 </div>
             </div>
+
+            {/* Render komponen modal di sini */}
+            {selectedProductSlug && (
+                <ProductQuickView
+                    productSlug={selectedProductSlug}
+                    isOpen={isQuickViewOpen}
+                    onClose={() => setQuickViewOpen(false)}
+                />
+            )}
         </section>
     );
 }
