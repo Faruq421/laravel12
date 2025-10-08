@@ -6,9 +6,39 @@ use App\Features\Product\Product;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class CartController extends Controller
 {
+    public function getItemDetails(string $cartItemId): JsonResponse
+    {
+        $cart = session()->get('cart', []);
+        $cartItem = null;
+
+        // Cari item di dalam 'items'
+        if (isset($cart['items']) && isset($cart['items'][$cartItemId])) {
+            $cartItem = $cart['items'][$cartItemId];
+        }
+
+        if (!$cartItem) {
+            return response()->json(['message' => 'Item tidak ditemukan'], 404);
+        }
+
+        // Muat data produk lengkap beserta relasi yang diperlukan oleh Quick View
+        $product = Product::with('category', 'attributeValues.attribute', 'designTemplates')
+            ->find($cartItem['product_id']);
+
+        if (!$product) {
+            return response()->json(['message' => 'Produk tidak ditemukan'], 404);
+        }
+
+        // Gabungkan data produk dengan detail pilihan dari sesi
+        return response()->json([
+            'product' => $product,
+            'selectedOptions' => $cartItem,
+        ]);
+    }
+
     /**
      * Store a newly created resource in storage.
      */

@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
-import { ShoppingCart, Plus, Minus, UploadCloud, X, CheckCircle2, Loader2, FileImage } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, UploadCloud, X, CheckCircle2, Loader2, FileImage, RefreshCw } from 'lucide-react';
 
 // --- Tipe Data ---
 interface ProductData {
@@ -57,7 +57,8 @@ type GalleryItem = {
 
 // --- Props Komponen ---
 interface ProductQuickViewProps {
-    productSlug: string | null;
+    productSlug?: string | null;
+    cartItemId?: string | null;
     isOpen: boolean;
     onClose: () => void;
 }
@@ -129,9 +130,10 @@ const ProductGallery = ({ product, onTemplateSelect, selectedTemplateId }: {
 
 
 // --- Komponen Utama ---
-export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickViewProps) {
+export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: ProductQuickViewProps) {
     const [product, setProduct] = useState<ProductData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const isEditMode = !!cartItemId;
 
     // --- State Manajemen ---
     const [quantity, setQuantity] = useState<number>(1);
@@ -152,28 +154,49 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
     };
 
     useEffect(() => {
-        if (isOpen && productSlug) {
-            setIsLoading(true);
-            axios.get(`/api/products/${productSlug}`)
-                .then(response => {
+        if (!isOpen) {
+            setProduct(null);
+            return;
+        }
+
+        setIsLoading(true);
+        const url = isEditMode ? `/api/cart/${cartItemId}` : `/api/products/${productSlug}`;
+
+        axios.get(url)
+            .then(response => {
+                if (isEditMode) {
+                    const { product: productData, selectedOptions: itemOptions } = response.data;
+                    setProduct(productData);
+                    
+                    // Pre-populate state from cart item data
+                    setQuantity(itemOptions.quantity || 1);
+                    setSelectedOptions(itemOptions.variant || {});
+                    setNote(itemOptions.note || "");
+
+                    if (itemOptions.design?.type === 'template' && productData.design_templates) {
+                        const foundTemplate = productData.design_templates.find(
+                            (t: DesignTemplate) => t.id === itemOptions.design.value
+                        );
+                        if (foundTemplate) setSelectedTemplate(foundTemplate);
+                    }
+                    // Note: Pre-populating uploaded files is not feasible for security reasons.
+                    // The user will have to re-upload if they want to change the custom design.
+
+                } else {
                     setProduct(response.data);
                     resetState();
-                })
-                .catch(error => {
-                    console.error("Failed to fetch product data:", error);
-                    toast.error("Gagal memuat detail produk.");
-                    onClose();
-                })
-                .finally(() => {
-                    setIsLoading(false);
-                });
-        } else if (!isOpen) {
-            setProduct(null);
-        }
-    }, [isOpen, productSlug]);
+                }
+            })
+            .catch(error => {
+                console.error("Gagal memuat data:", error);
+                toast.error("Gagal memuat data untuk ditampilkan.");
+                onClose();
+            })
+            .finally(() => setIsLoading(false));
+    }, [isOpen, productSlug, cartItemId]);
 
 
-    const { data, setData, post, processing } = useForm({
+    const { data, setData, post, patch, processing } = useForm({
         product_id: product?.id_produk,
         quantity: 1,
         variant: {} as Record<string, number>,
@@ -275,6 +298,24 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
         });
     };
 
+    const handleUpdateCart = () => {
+        if (!cartItemId) return;
+        // Untuk update, kita perlu mengirim data form secara eksplisit
+        // karena `patch` tidak otomatis mengambilnya seperti `post` dari `useForm`
+        patch(route('cart.update', { cartItemId }), {
+            data, // Kirim state form saat ini
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Keranjang berhasil diperbarui.');
+                onClose();
+            },
+            onError: (errors) => {
+                console.error("Update Error:", errors);
+                toast.error('Gagal memperbarui keranjang.');
+            }
+        });
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -303,7 +344,7 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                                 {Object.entries(attributeGroups).map(([name, values]) => (
                                     <div key={name}>
                                         <Label className='text-md mb-2 block font-semibold'>{name}</Label>
-                                        <RadioGroup onValueChange={(valueId) => handleOptionChange(values[0].attribute.id.toString(), Number(valueId))} className='flex flex-wrap gap-2'>
+                                        <RadioGroup onValueChange={(valueId) => handleOptionChange(values[0].attribute.id.toString(), Number(valueId))} value={selectedOptions[values[0].attribute.id]?.toString()} className='flex flex-wrap gap-2'>
                                             {values.map((value) => (
                                                 <Label key={value.id} htmlFor={`modal_attr_${value.id}`} className="flex cursor-pointer items-center gap-3 rounded-lg border bg-white px-3 py-2 text-sm transition-all hover:bg-gray-100 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
                                                     <RadioGroupItem value={value.id.toString()} id={`modal_attr_${value.id}`} />
@@ -315,9 +356,9 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                                     </div>
                                 ))}
 
-                                {/* Opsi Desain (REFACTORED) */}
+                                {/* Opsi Desain */}
                                 {product.enable_design_feature && (
-                                    <div>
+                                     <div>
                                         <Label className="text-md mb-2 block font-semibold">Opsi Desain</Label>
                                         <Tabs defaultValue={product.design_templates?.length > 0 ? "template" : "upload"} className="w-full">
                                             <TabsList className={cn("grid w-full", product.allow_custom_design && product.design_templates?.length > 0 ? "grid-cols-2" : "grid-cols-1")}>
@@ -371,7 +412,7 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                                     </div>
                                 )}
 
-                                {/* Kuantitas & Catatan (REFACTORED) */}
+                                {/* Kuantitas & Catatan */}
                                 <div className="space-y-4 pt-2">
                                     <div>
                                         <Label htmlFor="quantity_modal" className="text-md mb-2 block font-semibold">Jumlah</Label>
@@ -397,9 +438,9 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className="w-full sm:w-auto">
-                                            <Button size="lg" onClick={handleAddToCart} disabled={isActionDisabled} className="w-full bg-[#FF6500] py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-[#FF6500]/90 disabled:cursor-not-allowed disabled:bg-gray-400">
-                                                <ShoppingCart className="mr-3 h-6 w-6" />
-                                                Tambah ke Keranjang
+                                            <Button size="lg" onClick={isEditMode ? handleUpdateCart : handleAddToCart} disabled={isActionDisabled} className="w-full bg-[#FF6500] py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-[#FF6500]/90 disabled:cursor-not-allowed disabled:bg-gray-400">
+                                                {isEditMode ? <RefreshCw className="mr-3 h-6 w-6" /> : <ShoppingCart className="mr-3 h-6 w-6" />}
+                                                {isEditMode ? 'Perbarui Pesanan' : 'Tambah ke Keranjang'}
                                             </Button>
                                         </div>
                                     </TooltipTrigger>
