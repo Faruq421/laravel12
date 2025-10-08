@@ -13,7 +13,7 @@ class ProductController extends Controller
 {
     public function quickView(Product $product): JsonResponse
     {
-        $product->load(['attributes.values', 'designTemplates']);
+        $product->load('category', 'attributeValues.attribute', 'designTemplates');
         return response()->json($product);
     }
 

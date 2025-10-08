@@ -119,3 +119,26 @@ Sekarang kita akan memodifikasi halaman utama untuk menggunakan komponen `Produc
 2.  **Styling dan Finalisasi:**
     -   Pastikan tampilan modal `ProductQuickView` responsif dan terlihat bagus di berbagai ukuran layar.
     -   Pastikan semua state (varian, kuantitas, desain) direset dengan benar saat modal ditutup dan dibuka kembali untuk produk yang berbeda.
+
+---
+
+### Langkah 5: Perbaikan - Modal Gagal Memuat Data
+
+Masalah ini terjadi karena adanya ketidakkonsistenan antara data yang dikirim oleh endpoint API `quickView` dan data yang diharapkan oleh komponen frontend `ProductQuickView.tsx`. Komponen frontend membutuhkan relasi data yang lengkap (seperti kategori dan detail atribut) yang sebelumnya tidak dimuat oleh API.
+
+1.  **Perbaiki Metode `quickView` di Controller:**
+    -   Buka `app/Features/Product/ProductController.php`.
+    -   Modifikasi metode `quickView` untuk memuat relasi data yang sama persis dengan metode `show`. Ini memastikan bahwa komponen modal menerima semua data yang dibutuhkannya untuk me-render dengan benar.
+
+    ```php
+    // Di dalam ProductController.php
+    public function quickView(Product $product): JsonResponse
+    {
+        // PERBAIKAN: Muat relasi yang sama dengan metode show()
+        $product->load('category', 'attributeValues.attribute', 'designTemplates');
+        return response()->json($product);
+    }
+    ```
+
+2.  **Verifikasi Ulang Frontend:**
+    -   Tidak ada perubahan yang diperlukan di sisi frontend. Komponen `ProductQuickView.tsx` sudah dirancang untuk menangani data yang lengkap. Perbaikan di backend akan secara otomatis menyelesaikan masalah di frontend.
