@@ -361,7 +361,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                                 {Object.entries(attributeGroups).map(([name, values]) => (
                                     <div key={name}>
                                         <Label className='text-md mb-2 block font-semibold'>{name}</Label>
-                                        <RadioGroup onValueChange={(valueId) => handleOptionChange(values[0].attribute.id.toString(), Number(valueId))} value={selectedOptions[values[0].attribute.id]?.toString()} className='flex flex-wrap gap-2'>
+                                        <RadioGroup onValueChange={(valueId) => handleOptionChange(values[0].attribute.id.toString(), Number(valueId))} value={selectedOptions[values[0].attribute.id]?.toString() || ''} className='flex flex-wrap gap-2'>
                                             {values.map((value) => (
                                                 <Label key={value.id} htmlFor={`modal_attr_${value.id}`} className="flex cursor-pointer items-center gap-3 rounded-lg border bg-white px-3 py-2 text-sm transition-all hover:bg-gray-100 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
                                                     <RadioGroupItem value={value.id.toString()} id={`modal_attr_${value.id}`} />
@@ -455,7 +455,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className="w-full sm:w-auto">
-                                            <Button size="lg" onClick={isEditMode ? handleUpdateCart : handleAddToCart} disabled={isActionDisabled} className="w-full bg-[#FF6500] py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-[#FF6500]/90 disabled:cursor-not-allowed disabled:bg-gray-400">
+                                            <Button size="lg" onClick={isEditMode ? handleUpdateCart : handleAddToCart} disabled={isEditMode ? processing : isActionDisabled} className="w-full bg-[#FF6500] py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-[#FF6500]/90 disabled:cursor-not-allowed disabled:bg-gray-400">
                                                 {isEditMode ? <RefreshCw className="mr-3 h-6 w-6" /> : <ShoppingCart className="mr-3 h-6 w-6" />}
                                                 {isEditMode ? 'Perbarui Pesanan' : 'Tambah ke Keranjang'}
                                             </Button>

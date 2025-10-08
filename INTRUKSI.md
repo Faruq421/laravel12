@@ -436,4 +436,25 @@ setSelectedOptions(variant || {});
         }}
         ```
 
+---
 
+### Langkah 10: Perbaikan Stabilitas - Mencegah "Uncontrolled to Controlled" Warning
+
+**Masalah:** Saat mengedit item dari keranjang, konsol menampilkan peringatan `RadioGroup is changing from uncontrolled to controlled`. Ini terjadi karena nilai awal untuk `RadioGroup` (varian produk) adalah `undefined` saat komponen pertama kali render, sebelum state pilihan pengguna dimuat. Peralihan ini menyebabkan render yang tidak stabil dan dapat secara keliru menonaktifkan tombol "Perbarui Pesanan".
+
+**Solusi:** Kita akan memastikan komponen `RadioGroup` selalu "terkontrol" sejak awal dengan memberikan nilai fallback berupa string kosong (`''`) jika nilai yang sebenarnya belum tersedia.
+
+1.  **Perbaiki Komponen `RadioGroup` di `ProductQuickView.tsx`**
+    -   Buka `resources/js/components/ProductQuickView.tsx`.
+    -   Cari baris di mana `RadioGroup` di-render.
+    -   Modifikasi prop `value` untuk menyertakan fallback `|| ''`.
+
+    ```tsx
+    // Di dalam ProductQuickView.tsx, di dalam .map untuk attributeGroups
+
+    // Ganti baris ini:
+    <RadioGroup onValueChange={...} value={selectedOptions[values[0].attribute.id]?.toString()} ...>
+
+    // Menjadi seperti ini:
+    <RadioGroup onValueChange={...} value={selectedOptions[values[0].attribute.id]?.toString() || ''} ...>
+    ```
