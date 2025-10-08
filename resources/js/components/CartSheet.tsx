@@ -1,18 +1,21 @@
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
-import { usePage, Link } from '@inertiajs/react';
-import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { usePage, Link, router } from '@inertiajs/react';
+import { ShoppingCart, Trash2, Plus, Minus, Pencil, PackageOpen } from 'lucide-react';
 import { PageProps } from '@/types';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
+import { debounce } from 'lodash';
 
-// Sesuaikan tipe dengan struktur data dari backend
+// Tipe data dari backend
 interface CartItem {
     id: string;
     product_id: number;
     name: string;
     quantity: number;
     price: number;
-    variant: string[]; // atau tipe yang lebih spesifik
+    variant: string[];
     image: string;
 }
 
@@ -21,10 +24,93 @@ interface CartData {
     subtotal: number;
 }
 
+// --- Komponen Internal ---
+
+// Kartu untuk setiap item di keranjang
+const CartItemCard = ({ item }: { item: CartItem }) => {
+    const [quantity, setQuantity] = useState(item.quantity);
+
+    const debouncedUpdate = useMemo(
+        () =>
+            debounce((newQuantity: number) => {
+                router.patch(route('cart.update', item.id), {
+                    quantity: newQuantity,
+                }, {
+                    preserveState: true,
+                    preserveScroll: true,
+                });
+            }, 300),
+        [item.id]
+    );
+
+    const handleQuantityChange = (newQuantity: number) => {
+        if (newQuantity >= 1) {
+            setQuantity(newQuantity);
+            debouncedUpdate(newQuantity);
+        }
+    };
+
+    const removeItem = () => {
+        router.delete(route('cart.destroy', item.id), {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    return (
+        <div className="flex items-start gap-4 rounded-lg p-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+            <img src={item.image} alt={item.name} className="h-24 w-24 rounded-md object-cover border" />
+            <div className="flex-1">
+                <p className="font-semibold text-md">{item.name}</p>
+                {item.variant && item.variant.length > 0 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{item.variant.join(', ')}</p>
+                )}
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">
+                    Rp {item.price.toLocaleString('id-ID')}
+                </p>
+                <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                        <Button variant="outline" size="icon" onClick={() => handleQuantityChange(quantity - 1)} className="h-8 w-8">
+                            <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-10 text-center font-bold">{quantity}</span>
+                        <Button variant="outline" size="icon" onClick={() => handleQuantityChange(quantity + 1)} className="h-8 w-8">
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                         <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={removeItem} className="text-red-500 hover:text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Tampilan saat keranjang kosong
+const EmptyCart = () => (
+    <div className="flex h-full flex-col items-center justify-center text-center">
+        <PackageOpen className="h-28 w-28 text-gray-300 dark:text-gray-600" />
+        <p className="mt-6 text-xl font-semibold">Keranjang Anda Kosong</p>
+        <p className="mt-2 text-gray-500 dark:text-gray-400">Waktunya berburu produk keren!</p>
+        <SheetClose asChild>
+            <Button className="mt-8 bg-[#FF6500] text-white hover:bg-[#FF6500]/90">
+                Mulai Belanja
+            </Button>
+        </SheetClose>
+    </div>
+);
+
+
+// --- Komponen Utama ---
 
 export function CartSheet() {
     const { props } = usePage<PageProps>();
-    // Ambil data cart sesuai struktur dari session
     const cart = (props.cart as CartData | null) || { items: {}, subtotal: 0 };
     const cartItems = Object.values(cart.items || {});
 
@@ -35,73 +121,54 @@ export function CartSheet() {
     return (
         <Sheet>
             <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="relative">
+                <Button variant="outline" size="icon" className="relative rounded-full h-10 w-10">
                     <ShoppingCart className="h-5 w-5" />
                     {totalItems > 0 && (
-                        <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs text-white">
+                        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
                             {totalItems}
                         </span>
                     )}
                 </Button>
             </SheetTrigger>
-            <SheetContent className="flex w-full flex-col sm:max-w-lg">
-                <SheetHeader>
-                    <SheetTitle>Keranjang Belanja ({totalItems} Item)</SheetTitle>
+            <SheetContent className="flex w-full flex-col bg-white dark:bg-gray-900 sm:max-w-lg">
+                <SheetHeader className="border-b pb-4 dark:border-gray-700">
+                    <SheetTitle className="text-xl font-bold">Keranjang Belanja</SheetTitle>
                 </SheetHeader>
+
                 {cartItems.length > 0 ? (
                     <>
-                        <div className="flex-1 overflow-y-auto pr-4">
+                        <div className="flex-1 overflow-y-auto -mx-6 px-6 my-4">
                             <div className="space-y-4">
                                 {cartItems.map((item) => (
-                                    <div key={item.id} className="flex items-start gap-4">
-                                        <img src={item.image} alt={item.name} className="h-20 w-20 rounded-md object-cover" />
-                                        <div className="flex-1">
-                                            <p className="font-semibold">{item.name}</p>
-                                            <p className="text-sm text-gray-500">Rp {item.price.toLocaleString('id-ID')}</p>
-                                            {item.variant && item.variant.length > 0 && (
-                                                <p className="text-xs text-gray-500">{item.variant.join(', ')}</p>
-                                            )}
-                                            <div className="mt-2 flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    {/* TODO: Update quantity */}
-                                                    <Button variant="outline" size="icon" className="h-7 w-7"><Minus className="h-4 w-4" /></Button>
-                                                    <span className="w-8 text-center">{item.quantity}</span>
-                                                    <Button variant="outline" size="icon" className="h-7 w-7"><Plus className="h-4 w-4" /></Button>
-                                                </div>
-                                                {/* TODO: Remove item */}
-                                                <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600"><Trash2 className="h-4 w-4" /></Button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <CartItemCard key={item.id} item={item} />
                                 ))}
                             </div>
                         </div>
-                        <SheetFooter className="mt-auto border-t pt-4">
+
+                        <SheetFooter className="mt-auto border-t pt-6 dark:border-gray-700">
                             <div className="w-full space-y-4">
-                                <div className="flex justify-between font-semibold">
+                                <div className="flex justify-between text-lg font-semibold">
                                     <span>Subtotal</span>
                                     <span>Rp {cart.subtotal.toLocaleString('id-ID')}</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button asChild variant="outline">
-                                        <Link href="#">Lihat Keranjang</Link>
-                                    </Button>
-                                    <Button asChild>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Biaya pengiriman dan pajak akan dihitung saat checkout.
+                                </p>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <Button asChild size="lg" className="bg-[#FF6500] text-white hover:bg-[#FF6500]/90 text-lg h-12">
                                         <Link href="#">Checkout</Link>
                                     </Button>
+                                    <SheetClose asChild>
+                                        <Button asChild variant="outline" size="lg" className="text-lg h-12">
+                                            <Link href="/">Lanjutkan Belanja</Link>
+                                        </Button>
+                                    </SheetClose>
                                 </div>
                             </div>
                         </SheetFooter>
                     </>
                 ) : (
-                    <div className="flex h-full flex-col items-center justify-center">
-                        <ShoppingCart className="h-24 w-24 text-gray-300" />
-                        <p className="mt-4 text-lg font-semibold">Keranjang Anda kosong</p>
-                        <p className="mt-2 text-center text-gray-500">Sepertinya Anda belum menambahkan produk apapun.</p>
-                        <SheetTrigger asChild>
-                            <Button className="mt-6">Mulai Belanja</Button>
-                        </SheetTrigger>
-                    </div>
+                    <EmptyCart />
                 )}
             </SheetContent>
         </Sheet>

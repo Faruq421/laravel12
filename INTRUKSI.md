@@ -178,3 +178,46 @@ Berikut adalah langkah-langkah teknis yang akan dieksekusi untuk mengaktifkan fu
         -   Melakukan mapping (looping) pada data item keranjang dan menampilkannya dalam daftar.
         -   Menampilkan pesan "Keranjang Anda kosong" jika tidak ada item.
         -   Menghitung dan menampilkan subtotal secara dinamis.
+---
+## RENCANA EKSEKUSI: REDESAIN KERANJANG BELANJA (8 Oktober 2025)
+
+Berdasarkan referensi desain, berikut adalah langkah-langkah untuk merombak total komponen `CartSheet.tsx` dan backend-nya.
+
+### Tahap 1: Backend (Update & Hapus Item)
+
+1.  **Implementasikan Logika `update` & `destroy`:**
+    -   **Aksi:** Tambahkan method `update` dan `destroy` ke `app/Http/Controllers/Features/CartController.php`.
+    -   **Tujuan:**
+        -   `update`: Mengubah kuantitas item yang sudah ada di keranjang sesi.
+        -   `destroy`: Menghapus item spesifik dari keranjang sesi.
+        -   Kedua method akan menghitung ulang subtotal dan menyimpan kembali ke sesi.
+
+2.  **Daftarkan Rute `PATCH` & `DELETE`:**
+    -   **Aksi:** Aktifkan dan sesuaikan rute `PATCH /cart/{cartItemId}` dan `DELETE /cart/{cartItemId}` di `routes/web.php`.
+    -   **Tujuan:** Menyediakan endpoint untuk frontend agar bisa berinteraksi dengan logika `update` dan `destroy`.
+
+### Tahap 2: Frontend (Redesain Komponen `CartSheet.tsx`)
+
+3.  **Struktur Ulang Komponen:**
+    -   **Aksi:** Ganti total isi dari `CartSheet.tsx`.
+    -   **Tujuan:** Mengimplementasikan layout baru yang lebih bersih dan modern, dengan pemisahan yang jelas antara header, daftar item, dan footer.
+
+4.  **Buat Komponen `CartItemCard`:**
+    -   **Aksi:** Di dalam `CartSheet.tsx`, buat sub-komponen untuk menampilkan setiap item.
+    -   **Tujuan:**
+        -   Menampilkan gambar, nama, varian, dan total harga per item (`harga x kuantitas`).
+        -   Membuat *quantity stepper* (+/-) yang terhubung ke fungsi `updateCartItem`.
+        -   Menambahkan tombol "Hapus" yang terhubung ke fungsi `removeCartItem`.
+        -   Menambahkan ikon "Edit" sebagai penanda visual.
+
+5.  **Implementasikan Logika Interaktif:**
+    -   **Aksi:** Tulis fungsi `updateCartItem` dan `removeCartItem` di dalam `CartSheet.tsx`.
+    -   **Tujuan:**
+        -   Fungsi-fungsi ini akan menggunakan `router.patch` dan `router.delete` dari Inertia untuk memanggil endpoint backend.
+        -   Gunakan opsi `preserveState: true` dan `preserveScroll: true` agar halaman tidak me-reload penuh saat item diubah, memberikan pengalaman yang mulus.
+
+6.  **Desain Ulang Footer & State Kosong:**
+    -   **Aksi:** Rombak bagian footer dan tampilan saat keranjang kosong.
+    -   **Tujuan:**
+        -   Footer akan menampilkan subtotal dengan lebih menonjol dan memiliki dua tombol: "Checkout" (utama) dan "Lanjutkan Belanja" (sekunder).
+        -   Tampilan kosong akan lebih menarik secara visual, mendorong pengguna untuk mulai berbelanja.

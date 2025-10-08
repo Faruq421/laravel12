@@ -12,8 +12,8 @@ Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
 // Rute untuk Keranjang Belanja
 Route::prefix('cart')->name('cart.')->group(function () {
     Route::post('/', [CartController::class, 'store'])->name('store');
-    // Route::patch('/{productId}', [CartController::class, 'update'])->name('update');
-    // Route::delete('/{productId}', [CartController::class, 'remove'])->name('remove');
+    Route::patch('/{cartItemId}', [CartController::class, 'update'])->name('update');
+    Route::delete('/{cartItemId}', [CartController::class, 'destroy'])->name('destroy');
 });
 
 // Rute khusus Admin

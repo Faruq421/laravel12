@@ -57,6 +57,42 @@ class CartController extends Controller
     }
 
     /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, $cartItemId)
+    {
+        $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $cart = session()->get('cart', ['items' => [], 'subtotal' => 0]);
+
+        if (isset($cart['items'][$cartItemId])) {
+            $cart['items'][$cartItemId]['quantity'] = $request->quantity;
+            $this->recalculateCartSubtotal($cart);
+            session()->put('cart', $cart);
+        }
+
+        return redirect()->back()->with('success', 'Cart updated successfully!');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy($cartItemId)
+    {
+        $cart = session()->get('cart', ['items' => [], 'subtotal' => 0]);
+
+        if (isset($cart['items'][$cartItemId])) {
+            unset($cart['items'][$cartItemId]);
+            $this->recalculateCartSubtotal($cart);
+            session()->put('cart', $cart);
+        }
+
+        return redirect()->back()->with('success', 'Item removed from cart successfully!');
+    }
+
+    /**
      * Get variant details and price modifier.
      */
     private function getVariantDetails($variantData): array
