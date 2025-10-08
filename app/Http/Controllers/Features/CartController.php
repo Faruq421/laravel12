@@ -92,18 +92,44 @@ class CartController extends Controller
     public function update(Request $request, $cartItemId)
     {
         $request->validate([
+            'product_id' => ['required', 'exists:products,id_produk'],
             'quantity' => ['required', 'integer', 'min:1'],
+            'variant' => ['nullable', 'array'],
+            'design' => ['nullable', 'array'],
+            'note' => ['nullable', 'string'],
         ]);
 
         $cart = session()->get('cart', ['items' => [], 'subtotal' => 0]);
 
-        if (isset($cart['items'][$cartItemId])) {
-            $cart['items'][$cartItemId]['quantity'] = $request->quantity;
-            $this->recalculateCartSubtotal($cart);
-            session()->put('cart', $cart);
+        if (!isset($cart['items'][$cartItemId])) {
+            return redirect()->back()->with('error', 'Item tidak ditemukan di keranjang.');
         }
 
-        return redirect()->back()->with('success', 'Cart updated successfully!');
+        $product = Product::findOrFail($request->product_id);
+
+        unset($cart['items'][$cartItemId]);
+
+        $optionsIdentifier = md5(serialize($request->variant) . serialize($request->design));
+        $newCartItemId = $product->id_produk . '-' . $optionsIdentifier;
+
+        $variantDetails = $this->getVariantDetails($request->variant);
+
+        $cart['items'][$newCartItemId] = [
+            'id' => $newCartItemId,
+            'product_id' => $product->id_produk,
+            'name' => $product->nama_produk,
+            'price' => $product->harga + $variantDetails['price_modifier'],
+            'image' => $product->gambar_url,
+            'quantity' => $request->quantity,
+            'variant' => $request->variant,
+            'note' => $request->note,
+            'design' => $request->design,
+        ];
+
+        $this->recalculateCartSubtotal($cart);
+        session()->put('cart', $cart);
+
+        return redirect()->back()->with('success', 'Keranjang berhasil diperbarui!');
     }
 
     /**

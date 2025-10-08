@@ -96,7 +96,10 @@ export default function CollectionSection({ isInView, products }: CollectionSect
                 <ProductQuickView
                     productSlug={selectedProductSlug}
                     isOpen={isQuickViewOpen}
-                    onClose={() => setQuickViewOpen(false)}
+                    onClose={() => {
+                        setQuickViewOpen(false);
+                        setSelectedProductSlug(null); // <-- TAMBAHKAN BARIS INI
+                    }}
                 />
             )}
         </section>

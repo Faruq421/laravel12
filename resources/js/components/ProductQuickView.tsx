@@ -136,19 +136,30 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const isEditMode = !!cartItemId;
 
     // --- State Manajemen ---
-    const [quantity, setQuantity] = useState<number>(1);
+    const [quantity, setQuantity] = useState(1);
     const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>({});
     const [note, setNote] = useState("");
     const [selectedTemplate, setSelectedTemplate] = useState<DesignTemplate | null>(null);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [initialCartItemOptions, setInitialCartItemOptions] = useState<any>(null);
+
+    const { data, setData, post, patch, processing, reset } = useForm({
+        product_id: product?.id_produk,
+        quantity: 1,
+        variant: {} as Record<string, number>,
+        design: null as { type: 'template' | 'upload', value: number | File | null } | null,
+        note: "",
+    });
 
     const resetState = () => {
+        reset();
         setQuantity(1);
         setSelectedOptions({});
         setNote("");
         setSelectedTemplate(null);
         setUploadedFile(null);
+        setInitialCartItemOptions(null); // Reset juga state ini
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
     };
@@ -167,6 +178,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                 if (isEditMode) {
                     const { product: productData, selectedOptions: itemOptions } = response.data;
                     setProduct(productData);
+                    setInitialCartItemOptions(itemOptions); // Simpan data awal
                     
                     // Pre-populate state from cart item data
                     setQuantity(itemOptions.quantity || 1);
@@ -195,24 +207,23 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
             .finally(() => setIsLoading(false));
     }, [isOpen, productSlug, cartItemId]);
 
-
-    const { data, setData, post, patch, processing } = useForm({
-        product_id: product?.id_produk,
-        quantity: 1,
-        variant: {} as Record<string, number>,
-        design: null as { type: 'template' | 'upload', value: number | File | null } | null,
-        note: "",
-    });
-
     // --- Sinkronisasi State ke Form ---
     useEffect(() => { setData('quantity', quantity) }, [quantity]);
     useEffect(() => { setData('variant', selectedOptions) }, [selectedOptions]);
     useEffect(() => { setData('note', note) }, [note]);
     useEffect(() => {
-        if (selectedTemplate) setData('design', { type: 'template', value: selectedTemplate.id });
-        else if (uploadedFile) setData('design', { type: 'upload', value: uploadedFile });
-        else setData('design', null);
-    }, [selectedTemplate, uploadedFile]);
+        if (selectedTemplate) {
+            setData('design', { type: 'template', value: selectedTemplate.id });
+        } else if (uploadedFile) {
+            setData('design', { type: 'upload', value: uploadedFile });
+        } else if (isEditMode && initialCartItemOptions?.design) {
+            // Jika dalam mode edit dan tidak ada pilihan baru, pertahankan desain lama
+            setData('design', initialCartItemOptions.design);
+        } 
+        else {
+            setData('design', null);
+        }
+    }, [selectedTemplate, uploadedFile, isEditMode, initialCartItemOptions]);
      useEffect(() => {
         if (product) setData('product_id', product.id_produk);
     }, [product]);
@@ -276,7 +287,13 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     // --- Logika Tombol Aksi & Tooltip ---
     const hasAttributes = Object.keys(attributeGroups).length > 0;
     const areAllOptionsSelected = hasAttributes ? Object.keys(selectedOptions).length === Object.keys(attributeGroups).length : true;
-    const isDesignSelected = !product?.enable_design_feature || !!selectedTemplate || !!uploadedFile;
+    
+    const hasInitialDesign = !!initialCartItemOptions?.design;
+    const isDesignSelected = !product?.enable_design_feature || 
+                             !!selectedTemplate || 
+                             !!uploadedFile || 
+                             (isEditMode && hasInitialDesign && !selectedTemplate && !uploadedFile);
+
     const isActionDisabled = !areAllOptionsSelected || !isDesignSelected || processing || !product;
 
     const getTooltipMessage = () => {

@@ -249,7 +249,7 @@ Masalah ini terjadi karena adanya ketidakkonsistenan antara data yang dikirim ol
                         const { quantity, variant, note, design } = response.data.selectedOptions;
                         // Pre-populate state
                         setQuantity(quantity);
-                        setSelectedOptions(variant || {});
+setSelectedOptions(variant || {});
                         setNote(note || "");
                         // Logika untuk pre-populate desain akan ditambahkan
                     } else {
@@ -316,3 +316,124 @@ Masalah ini terjadi karena adanya ketidakkonsistenan antara data yang dikirim ol
             />
         )}
         ```
+---
+
+### Langkah 8: Perbaikan Kritis - Fungsionalitas Edit Keranjang
+
+**Masalah:** Fitur edit keranjang memiliki dua bug kritis: 1) Perubahan pada varian/desain tidak disimpan karena backend hanya memproses kuantitas. 2) Tombol "Perbarui Pesanan" menjadi nonaktif secara permanen saat opsi diubah, terutama opsi desain.
+
+**Solusi:** Kita akan merombak metode `update` di backend agar dapat memproses semua data form, dan memperbaiki logika `state` di frontend agar tombol tetap aktif dengan benar.
+
+1.  **Backend: Rombak Metode `update` di `CartController`**
+    -   Buka `app/Http/Controllers/Features/CartController.php`.
+    -   Ganti metode `update` yang ada dengan versi baru yang lebih komprehensif. Logika ini akan sangat mirip dengan metode `store`, tetapi alih-alih membuat item baru, ia akan menimpa item yang ada dengan data yang diperbarui.
+    -   Pastikan untuk menambahkan `use App\Features\Product\Product;` di bagian atas file jika belum ada.
+
+    ```php
+    // Di dalam CartController.php, ganti metode update() yang lama
+    public function update(Request $request, $cartItemId)
+    {
+        $request->validate([
+            'product_id' => ['required', 'exists:products,id_produk'],
+            'quantity' => ['required', 'integer', 'min:1'],
+            'variant' => ['nullable', 'array'],
+            'design' => ['nullable', 'array'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $cart = session()->get('cart', ['items' => [], 'subtotal' => 0]);
+
+        // Pastikan item yang akan diupdate ada
+        if (!isset($cart['items'][$cartItemId])) {
+            return redirect()->back()->with('error', 'Item tidak ditemukan di keranjang.');
+        }
+
+        $product = Product::findOrFail($request->product_id);
+
+        // Hapus item lama untuk digantikan dengan yang baru
+        // Ini adalah cara sederhana untuk memastikan semua data diperbarui
+        unset($cart['items'][$cartItemId]);
+
+        // Buat ulang item dengan data baru (mirip dengan metode store)
+        $optionsIdentifier = md5(serialize($request->variant) . serialize($request->design));
+        $newCartItemId = $product->id_produk . '-' . $optionsIdentifier;
+
+        $variantDetails = $this->getVariantDetails($request->variant);
+
+        $cart['items'][$newCartItemId] = [
+            'id' => $newCartItemId,
+            'product_id' => $product->id_produk,
+            'name' => $product->nama_produk,
+            'price' => $product->harga + $variantDetails['price_modifier'],
+            'image' => $product->gambar_url,
+            'quantity' => $request->quantity,
+            'variant' => $request->variant, // Simpan ID varian
+            'note' => $request->note,
+            'design' => $request->design,
+        ];
+
+        $this->recalculateCartSubtotal($cart);
+        session()->put('cart', $cart);
+
+        return redirect()->back()->with('success', 'Keranjang berhasil diperbarui!');
+    }
+    ```
+
+2.  **Frontend: Perbaiki Logika `State` di `ProductQuickView.tsx`**
+    -   Buka `resources/js/components/ProductQuickView.tsx`.
+    -   **Tambahkan State Baru:** Kita perlu state untuk menyimpan data awal item keranjang agar bisa dibandingkan.
+        ```tsx
+        // Di bawah state lainnya
+        const [initialCartItemOptions, setInitialCartItemOptions] = useState(null);
+        ```
+    -   **Update `useEffect`:** Simpan data `selectedOptions` saat memuat data dalam mode edit.
+        ```tsx
+        // Di dalam blok if (isEditMode) di useEffect
+        setInitialCartItemOptions(response.data.selectedOptions); 
+        ```
+    -   **Perbaiki Logika `isDesignSelected`:** Buat logika ini lebih cerdas dengan memeriksa apakah desain sudah ada dari awal.
+        ```tsx
+        // Ganti deklarasi isDesignSelected yang lama
+        const hasInitialDesign = !!initialCartItemOptions?.design;
+        const isDesignSelected = !product?.enable_design_feature || 
+                                 !!selectedTemplate || 
+                                 !!uploadedFile || 
+                                 (isEditMode && hasInitialDesign && !selectedTemplate && !uploadedFile);
+        ```
+        Logika baru ini berarti: "Desain dianggap terpilih jika: fitur desain nonaktif, ATAU template baru dipilih, ATAU file baru diunggah, ATAU (dalam mode edit) pengguna belum memilih yang baru TAPI item aslinya sudah memiliki desain."
+---
+
+### Langkah 9: Perbaikan Stabilitas - Mencegah State Contamination
+
+**Masalah:** Setelah menggunakan modal *Quick View* dalam mode "Edit" dan menutupnya, membukanya kembali dalam mode "Tambah" (dari halaman utama) menyebabkan *crash* (layar putih). Ini terjadi karena *state* dari `useForm` (termasuk data dan *error*) tidak direset sepenuhnya, menyebabkan inkonsistensi data.
+
+**Solusi:** Kita akan memastikan semua *state*, terutama dari `useForm`, direset total setiap kali modal ditutup atau dibuka untuk item baru.
+
+1.  **Sempurnakan Reset State di `ProductQuickView.tsx`**
+    -   Buka `resources/js/components/ProductQuickView.tsx`.
+    -   Di dalam `useForm`, *destructure* fungsi `reset`.
+        ```tsx
+        const { data, setData, post, patch, processing, reset } = useForm({ /* ... */ });
+        ```
+    -   Perbarui fungsi `resetState` untuk memanggil `reset()` dari `useForm`. Ini akan membersihkan semua data, *error*, dan status internal dari form Inertia.
+        ```tsx
+        const resetState = () => {
+            reset(); // <-- TAMBAHKAN BARIS INI
+            setQuantity(1);
+            setSelectedOptions({});
+            // ... sisa fungsi resetState
+        };
+        ```
+
+2.  **Pastikan Reset Penuh di `CollectionSection.tsx`**
+    -   Buka `resources/js/pages/Welcome/Partials/CollectionSection.tsx`.
+    -   Modifikasi fungsi `onClose` untuk me-reset `selectedProductSlug` menjadi `null`. Ini memastikan bahwa komponen `ProductQuickView` di-unmount dan di-mount kembali dengan *props* yang bersih setiap kali dibuka, mencegah sisa *state* dari penggunaan sebelumnya.
+        ```tsx
+        // Ganti onClose yang lama
+        onClose={() => {
+            setQuickViewOpen(false);
+            setSelectedProductSlug(null); // <-- TAMBAHKAN BARIS INI
+        }}
+        ```
+
+
