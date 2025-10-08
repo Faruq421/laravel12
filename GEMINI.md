@@ -93,6 +93,17 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
+### 8 Oktober 2025
+- **Fitur: Fungsionalitas Penuh Keranjang Belanja**
+    -   **Backend:** Mengimplementasikan logika `CartController` untuk menambah (`store`), memperbarui (`update`), dan menghapus (`destroy`) item dari keranjang belanja berbasis sesi. Mendaftarkan rute `POST`, `PATCH`, dan `DELETE` yang sesuai.
+    -   **Backend:** Memperbarui middleware `HandleInertiaRequests` untuk membagikan data keranjang secara global ke semua komponen frontend.
+    -   **Frontend:** Menghubungkan tombol "Tambah ke Keranjang" di halaman detail produk (`Product/Show.tsx`) untuk mengirim data ke backend menggunakan `useForm` dari Inertia.
+    -   **Perbaikan (Backend):** Mengatasi *error* SQL `Unknown column 'id'` dengan memperbaiki aturan validasi dan logika pencarian produk di `CartController` agar menggunakan `id_produk` sebagai *primary key*.
+- **Peningkatan (UI/UX): Desain Ulang Total Komponen Keranjang Belanja**
+    -   **Frontend:** Merombak total `CartSheet.tsx` dengan antarmuka yang lebih modern dan *user-friendly*, sesuai dengan referensi desain.
+    -   **Fitur (Frontend):** Mengimplementasikan *quantity stepper* (+/-) dan tombol hapus yang fungsional untuk setiap item di keranjang, yang berinteraksi dengan backend secara *real-time* tanpa me-reload halaman.
+    -   **UI/UX (Frontend):** Mendesain ulang tampilan saat keranjang kosong dan menyempurnakan bagian *footer* dengan tombol "Checkout" dan "Lanjutkan Belanja" yang lebih jelas.
+
 ### 5 Oktober 2025
 - **Perbaikan Kritis: Routing Admin & Stabilitas Halaman Detail Produk**
     -   **Masalah:** Ditemukan error `Route [dashboard] not defined` saat admin login. Meskipun komponen `dashboard.tsx` ada, tidak ada rute backend yang terhubung dengannya.
@@ -107,7 +118,7 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
     -   **Perbaikan (Infrastruktur):** Menjalankan `php artisan route:clear` dan `php artisan ziggy:generate` untuk membersihkan cache lama dan membuat ulang file `ziggy.js` dengan daftar rute yang lengkap.
 
 ### 4 Oktober 2025
-- **Fitur: Saklar Utama Opsi Desain & Peningkatan UI/UX**
+- **Fitur: Saklar Utama Osi Desain & Peningkatan UI/UX**
     -   **Backend:** Mengimplementasikan fondasi untuk saklar utama fitur desain.
         -   Menambahkan kolom boolean `enable_design_feature` ke tabel `products` melalui migrasi database baru.
         -   Memperbarui model `Product.php` dengan menambahkan `enable_design_feature` ke properti `$fillable` dan `$casts` untuk mass-assignment dan penjaminan tipe data.
