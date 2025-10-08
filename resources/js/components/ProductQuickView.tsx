@@ -17,9 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
-import { ShoppingCart, Plus, Minus, UploadCloud, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, UploadCloud, X, CheckCircle2, Loader2, FileImage } from 'lucide-react';
 
-// --- Tipe Data (diadaptasi dari Show.tsx) ---
+// --- Tipe Data ---
 interface ProductData {
     id_produk: number;
     nama_produk: string;
@@ -157,7 +157,7 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
             axios.get(`/api/products/${productSlug}`)
                 .then(response => {
                     setProduct(response.data);
-                    resetState(); // Reset state saat produk baru dimuat
+                    resetState();
                 })
                 .catch(error => {
                     console.error("Failed to fetch product data:", error);
@@ -168,13 +168,12 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                     setIsLoading(false);
                 });
         } else if (!isOpen) {
-            // Reset product data when modal is closed to ensure clean state for next open
             setProduct(null);
         }
     }, [isOpen, productSlug]);
 
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing } = useForm({
         product_id: product?.id_produk,
         quantity: 1,
         variant: {} as Record<string, number>,
@@ -267,6 +266,7 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
     const handleAddToCart = () => {
         if (!product) return;
         post(route('cart.store'), {
+            preserveScroll: true,
             onSuccess: () => {
                 toast.success(`${product.nama_produk} berhasil ditambahkan.`);
                 onClose();
@@ -279,7 +279,7 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 {isLoading && (
-                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-lg">
                         <Loader2 className="h-12 w-12 animate-spin text-orange-500" />
                     </div>
                 )}
@@ -315,7 +315,7 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                                     </div>
                                 ))}
 
-                                {/* Opsi Desain */}
+                                {/* Opsi Desain (REFACTORED) */}
                                 {product.enable_design_feature && (
                                     <div>
                                         <Label className="text-md mb-2 block font-semibold">Opsi Desain</Label>
@@ -324,33 +324,45 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                                                 {product.design_templates?.length > 0 && <TabsTrigger value="template">Pilih Template</TabsTrigger>}
                                                 {product.allow_custom_design && <TabsTrigger value="upload">Unggah Desain</TabsTrigger>}
                                             </TabsList>
+                                            
                                             {product.design_templates?.length > 0 && (
-                                                <TabsContent value="template" className="mt-4">
-                                                    <div className='grid grid-cols-5 gap-2'>
+                                                <TabsContent value="template" className="mt-4 p-1">
+                                                    <p className="text-sm text-gray-600 mb-3">Pilih salah satu template desain yang tersedia:</p>
+                                                    <div className='grid grid-cols-4 gap-3'>
                                                         {product.design_templates.map(template => (
-                                                            <div key={template.id} className="relative">
-                                                                <button onClick={() => handleSelectTemplate(template)} className={cn('overflow-hidden rounded-md aspect-square border-2 transition-all w-full', selectedTemplate?.id === template.id ? 'border-orange-500' : 'border-gray-200 hover:border-orange-400')}>
-                                                                    <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className='aspect-square w-full object-cover' />
+                                                            <div key={template.id} className="relative group">
+                                                                <button onClick={() => handleSelectTemplate(template)} className={cn('overflow-hidden rounded-lg aspect-square border-2 transition-all w-full block', selectedTemplate?.id === template.id ? 'border-orange-500 ring-2 ring-orange-300' : 'border-gray-200 hover:border-orange-400')}>
+                                                                    <img src={`/storage/${template.thumbnail_path}`} alt={template.name} className='aspect-square w-full object-cover group-hover:scale-110 transition-transform' />
                                                                 </button>
-                                                                {selectedTemplate?.id === template.id && <div className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-white"><CheckCircle2 className="h-3 w-3" /></div>}
+                                                                {selectedTemplate?.id === template.id && <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white border-2 border-white"><CheckCircle2 className="h-4 w-4" /></div>}
                                                             </div>
                                                         ))}
                                                     </div>
                                                 </TabsContent>
                                             )}
+
                                             {product.allow_custom_design && (
-                                                <TabsContent value="upload" className="mt-4">
+                                                <TabsContent value="upload" className="mt-4 p-1">
                                                     {uploadedFile ? (
-                                                        <div className='relative w-full rounded-lg border p-2 text-center'>
-                                                            <img src={previewUrl!} alt="Preview" className='h-20 w-full rounded-md object-contain' />
-                                                            <p className='mt-1 truncate text-xs'>{uploadedFile.name}</p>
-                                                            <Button variant="ghost" size="icon" className='absolute top-0 right-0 h-6 w-6' onClick={removeUploadedFile}><X className='h-4 w-4' /></Button>
+                                                        <div className='relative w-full rounded-lg border-2 border-dashed border-green-500 bg-green-50 p-4 text-center'>
+                                                            <div className="flex items-center gap-3">
+                                                                <img src={previewUrl!} alt="Preview" className='h-16 w-16 rounded-md object-cover border' />
+                                                                <div className="text-left">
+                                                                    <p className='font-semibold text-green-800'>File Terpilih:</p>
+                                                                    <p className='truncate text-sm text-gray-700' title={uploadedFile.name}>{uploadedFile.name}</p>
+                                                                    <p className="text-xs text-gray-500">{Math.round(uploadedFile.size / 1024)} KB</p>
+                                                                </div>
+                                                            </div>
+                                                            <Button variant="ghost" size="icon" className='absolute top-1 right-1 h-7 w-7 text-gray-500 hover:text-red-600' onClick={removeUploadedFile}><X className='h-5 w-5' /></Button>
                                                         </div>
                                                     ) : (
-                                                        <div {...getRootProps()} className={cn('flex h-28 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors', isDragActive ? 'border-orange-500 bg-orange-50' : 'border-gray-300 hover:bg-gray-50')}>
+                                                        <div {...getRootProps()} className={cn('flex h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors', isDragActive ? 'border-orange-500 bg-orange-50' : 'border-gray-300 hover:border-orange-400 hover:bg-gray-50')}>
                                                             <input {...getInputProps()} />
-                                                            <UploadCloud className='h-7 w-7 text-gray-400' />
-                                                            <p className='mt-2 text-center text-xs text-gray-500'>Seret & lepas atau klik</p>
+                                                            <div className="text-center">
+                                                                <UploadCloud className='h-10 w-10 text-gray-400 mx-auto' />
+                                                                <p className='mt-2 font-semibold text-gray-700'>Seret & lepas file Anda</p>
+                                                                <p className="text-xs text-gray-500 mt-1">atau klik untuk memilih file (PNG, JPG, dll)</p>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </TabsContent>
@@ -359,19 +371,19 @@ export function ProductQuickView({ productSlug, isOpen, onClose }: ProductQuickV
                                     </div>
                                 )}
 
-                                {/* Kuantitas & Catatan */}
-                                <div className="flex justify-between items-end gap-4">
-                                    <div className="flex-shrink-0">
+                                {/* Kuantitas & Catatan (REFACTORED) */}
+                                <div className="space-y-4 pt-2">
+                                    <div>
                                         <Label htmlFor="quantity_modal" className="text-md mb-2 block font-semibold">Jumlah</Label>
-                                        <div className="relative flex h-10 w-28 items-center rounded-lg border">
+                                        <div className="relative flex h-10 w-32 items-center rounded-lg border">
                                             <Button variant="outline" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="h-full rounded-r-none"><Minus className="h-4 w-4" /></Button>
                                             <Input id="quantity_modal" type="number" value={quantity} onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} className="h-full w-full border-x border-y-0 bg-transparent p-0 text-center font-bold focus-visible:ring-0 focus-visible:ring-offset-0" />
                                             <Button variant="outline" size="icon" onClick={() => setQuantity(q => q + 1)} className="h-full rounded-l-none"><Plus className="h-4 w-4" /></Button>
                                         </div>
                                     </div>
-                                    <div className="flex-grow">
-                                        <Label htmlFor="note_modal" className="text-md mb-2 block font-semibold">Catatan</Label>
-                                        <Textarea id="note_modal" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opsional..." className="w-full" rows={1}/>
+                                    <div>
+                                        <Label htmlFor="note_modal" className="text-md mb-2 block font-semibold">Catatan (Opsional)</Label>
+                                        <Textarea id="note_modal" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tulis catatan untuk pesanan Anda di sini..." className="w-full" rows={2}/>
                                     </div>
                                 </div>
                             </div>

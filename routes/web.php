@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
 
 Route::get('/api/products/{product:slug}', [ProductController::class, 'quickView'])->name('products.quickView');
+Route::get('/api/cart/{cartItemId}', [CartController::class, 'getItemDetails'])->name('cart.itemDetails');
 
 // Rute untuk publik (tidak perlu login)
 
