@@ -136,3 +136,45 @@ Kita akan membuat tiga tabel baru yang menjadi tulang punggung sistem pesanan.
         -   Gunakan `<DatePicker>` untuk mengatur `estimated_completion_date`.
         -   Gunakan `<Textarea>` untuk `admin_notes`.
         -   Tombol "Simpan Perubahan" untuk memicu `OrderController@update`.
+
+---
+## RENCANA EKSEKUSI: FITUR KERANJANG BELANJA (8 Oktober 2025)
+
+Berikut adalah langkah-langkah teknis yang akan dieksekusi untuk mengaktifkan fungsionalitas keranjang belanja.
+
+### Tahap 1: Backend (Logika & Data)
+
+1.  **Buat `CartController`:**
+    -   **Aksi:** Buat file controller baru di `app/Http/Controllers/Features/CartController.php`.
+    -   **Tujuan:** Menjadi pusat logika untuk semua operasi terkait keranjang (tambah, perbarui, hapus).
+
+2.  **Daftarkan Rute Keranjang:**
+    -   **Aksi:** Tambahkan rute `POST` untuk `/cart` di dalam file `routes/web.php`.
+    -   **Tujuan:** Membuat endpoint yang bisa diakses oleh frontend untuk mengirim data produk yang akan ditambahkan ke keranjang.
+
+3.  **Implementasikan Logika Penambahan Item:**
+    -   **Aksi:** Tulis method `store` di dalam `CartController`.
+    -   **Tujuan:** Logika ini akan:
+        -   Memvalidasi data yang masuk (ID produk, kuantitas, dll.).
+        -   Mengambil data keranjang yang sudah ada dari sesi. Jika belum ada, buat array kosong.
+        -   Menambahkan produk baru ke dalam array keranjang.
+        -   Menyimpan kembali array keranjang yang sudah diperbarui ke dalam sesi.
+        -   Mengembalikan respons redirect kembali ke halaman produk.
+
+4.  **Bagikan Data Keranjang ke Frontend (Middleware):**
+    -   **Aksi:** Modifikasi method `share` di dalam middleware `app/Http/Middleware/HandleInertiaRequests.php`.
+    -   **Tujuan:** Menambahkan data keranjang dari sesi ke dalam props global yang dikirim ke setiap halaman Inertia (React). Ini membuat data keranjang selalu tersedia di frontend.
+
+### Tahap 2: Frontend (Interaksi & Tampilan)
+
+5.  **Hubungkan Tombol "Tambah ke Keranjang":**
+    -   **Aksi:** Perbarui komponen `resources/js/Pages/Product/Show.tsx`.
+    -   **Tujuan:** Mengubah event `onClick` pada tombol "Tambah ke Keranjang". Event ini akan memanggil `router.post` dari Inertia untuk mengirim data produk (ID, kuantitas, varian terpilih) ke endpoint `/cart` yang telah dibuat.
+
+6.  **Tampilkan Item Keranjang Secara Dinamis:**
+    -   **Aksi:** Modifikasi komponen `resources/js/components/CartSheet.tsx`.
+    -   **Tujuan:**
+        -   Menggunakan hook `usePage` dari Inertia untuk mengakses data keranjang global.
+        -   Melakukan mapping (looping) pada data item keranjang dan menampilkannya dalam daftar.
+        -   Menampilkan pesan "Keranjang Anda kosong" jika tidak ada item.
+        -   Menghitung dan menampilkan subtotal secara dinamis.

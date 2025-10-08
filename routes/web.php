@@ -1,7 +1,7 @@
 <?php
 
 use App\Features\Product\ProductController;
-use App\Http\Controllers\Features\Cart\CartController;
+use App\Http\Controllers\Features\CartController;
 use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,9 +11,9 @@ Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
 
 // Rute untuk Keranjang Belanja
 Route::prefix('cart')->name('cart.')->group(function () {
-    Route::post('/', [CartController::class, 'add'])->name('add');
-    Route::patch('/{productId}', [CartController::class, 'update'])->name('update');
-    Route::delete('/{productId}', [CartController::class, 'remove'])->name('remove');
+    Route::post('/', [CartController::class, 'store'])->name('store');
+    // Route::patch('/{productId}', [CartController::class, 'update'])->name('update');
+    // Route::delete('/{productId}', [CartController::class, 'remove'])->name('remove');
 });
 
 // Rute khusus Admin

@@ -5,26 +5,31 @@ import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { PageProps } from '@/types';
 import { useMemo } from 'react';
 
+// Sesuaikan tipe dengan struktur data dari backend
 interface CartItem {
+    id: string;
     product_id: number;
     name: string;
     quantity: number;
     price: number;
-    options: any;
+    variant: string[]; // atau tipe yang lebih spesifik
     image: string;
 }
 
-interface Cart {
-    [id: string]: CartItem;
+interface CartData {
+    items: Record<string, CartItem>;
+    subtotal: number;
 }
+
 
 export function CartSheet() {
     const { props } = usePage<PageProps>();
-    const cart = props.cart as Cart;
-    const cartItems = Object.entries(cart || {});
+    // Ambil data cart sesuai struktur dari session
+    const cart = (props.cart as CartData | null) || { items: {}, subtotal: 0 };
+    const cartItems = Object.values(cart.items || {});
 
-    const subtotal = useMemo(() => {
-        return cartItems.reduce((acc, [, item]) => acc + item.price * item.quantity, 0);
+    const totalItems = useMemo(() => {
+        return cartItems.reduce((acc, item) => acc + item.quantity, 0);
     }, [cartItems]);
 
     return (
@@ -32,28 +37,30 @@ export function CartSheet() {
             <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="relative">
                     <ShoppingCart className="h-5 w-5" />
-                    {cartItems.length > 0 && (
+                    {totalItems > 0 && (
                         <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs text-white">
-                            {cartItems.length}
+                            {totalItems}
                         </span>
                     )}
                 </Button>
             </SheetTrigger>
             <SheetContent className="flex w-full flex-col sm:max-w-lg">
                 <SheetHeader>
-                    <SheetTitle>Keranjang Belanja</SheetTitle>
+                    <SheetTitle>Keranjang Belanja ({totalItems} Item)</SheetTitle>
                 </SheetHeader>
                 {cartItems.length > 0 ? (
                     <>
                         <div className="flex-1 overflow-y-auto pr-4">
                             <div className="space-y-4">
-                                {cartItems.map(([id, item]) => (
-                                    <div key={id} className="flex items-start gap-4">
+                                {cartItems.map((item) => (
+                                    <div key={item.id} className="flex items-start gap-4">
                                         <img src={item.image} alt={item.name} className="h-20 w-20 rounded-md object-cover" />
                                         <div className="flex-1">
                                             <p className="font-semibold">{item.name}</p>
                                             <p className="text-sm text-gray-500">Rp {item.price.toLocaleString('id-ID')}</p>
-                                            {/* TODO: Display options */}
+                                            {item.variant && item.variant.length > 0 && (
+                                                <p className="text-xs text-gray-500">{item.variant.join(', ')}</p>
+                                            )}
                                             <div className="mt-2 flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     {/* TODO: Update quantity */}
@@ -73,7 +80,7 @@ export function CartSheet() {
                             <div className="w-full space-y-4">
                                 <div className="flex justify-between font-semibold">
                                     <span>Subtotal</span>
-                                    <span>Rp {subtotal.toLocaleString('id-ID')}</span>
+                                    <span>Rp {cart.subtotal.toLocaleString('id-ID')}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <Button asChild variant="outline">

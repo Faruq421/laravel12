@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react'; // Import Link
+import { Head, Link, useForm } from '@inertiajs/react'; // Import Link & useForm
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { PageProps as InertiaPageProps } from '@/types';
 import { useDropzone } from 'react-dropzone';
@@ -185,11 +185,42 @@ export default function ProductShowPage({ product, auth, related_products }: Pag
         setPreviewUrl(null);
     };
 
+    const { data, setData, post, errors, processing } = useForm({
+        product_id: product.id_produk,
+        quantity: 1,
+        variant: {} as Record<string, number>,
+        design: null as { type: 'template' | 'upload', value: number | File | null },
+        note: "",
+    });
+
+    useEffect(() => {
+        setData('quantity', quantity);
+    }, [quantity]);
+
+    useEffect(() => {
+        setData('variant', selectedOptions);
+    }, [selectedOptions]);
+
+    useEffect(() => {
+        if (selectedTemplate) {
+            setData('design', { type: 'template', value: selectedTemplate.id });
+        } else if (uploadedFile) {
+            setData('design', { type: 'upload', value: uploadedFile });
+        } else {
+            setData('design', null);
+        }
+    }, [selectedTemplate, uploadedFile]);
+
+     useEffect(() => {
+        setData('note', note);
+    }, [note]);
+
+
     // --- Logika Tombol Aksi & Tooltip ---
     const hasAttributes = Object.keys(attributeGroups).length > 0;
     const areAllOptionsSelected = hasAttributes ? Object.keys(selectedOptions).length === Object.keys(attributeGroups).length : true;
     const isDesignSelected = !product.enable_design_feature || !!selectedTemplate || !!uploadedFile;
-    const isActionDisabled = !areAllOptionsSelected || !isDesignSelected;
+    const isActionDisabled = !areAllOptionsSelected || !isDesignSelected || processing;
 
     const getTooltipMessage = () => {
         if (!areAllOptionsSelected) return "Harap pilih semua varian produk (misal: Ukuran, Bahan).";
@@ -197,7 +228,17 @@ export default function ProductShowPage({ product, auth, related_products }: Pag
         return "";
     };
 
-    const handleAddToCart = () => toast.success(`${product.nama_produk} berhasil ditambahkan ke keranjang.`);
+    const handleAddToCart = () => {
+        post(route('cart.store'), {
+            onSuccess: () => {
+                toast.success(`${product.nama_produk} berhasil ditambahkan ke keranjang.`);
+            },
+            onError: (errors) => {
+                toast.error('Gagal menambahkan produk, periksa kembali pilihan Anda.');
+                console.error("Cart Error:", errors);
+            }
+        });
+    };
     const handleBuyNow = () => toast.info(`Proses checkout untuk ${product.nama_produk}...`);
 
     return (
