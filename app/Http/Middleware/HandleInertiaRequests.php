@@ -43,7 +43,16 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'message' => fn() => $request->session()->get('message'),
             ],
-            'cart' => fn() => session('cart', []),
+            'cart' => function () {
+                $cart = session('cart', ['items' => [], 'subtotal' => 0]);
+                // PERBAIKAN: Ganti count() dengan kalkulasi yang benar
+                $quantity = is_array($cart['items']) ? array_sum(array_column($cart['items'], 'quantity')) : 0;
+                return [
+                    'items' => $cart['items'],
+                    'subtotal' => $cart['subtotal'],
+                    'quantity' => $quantity,
+                ];
+            },
         ]);
     }
 }

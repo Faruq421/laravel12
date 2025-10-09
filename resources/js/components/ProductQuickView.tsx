@@ -143,12 +143,13 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [initialCartItemOptions, setInitialCartItemOptions] = useState<any>(null);
+    const [existingDesign, setExistingDesign] = useState<{ value: string; original_filename: string } | null>(null);
 
     const { data, setData, post, patch, processing, reset } = useForm({
         product_id: product?.id_produk,
         quantity: 1,
         variant: {} as Record<string, number>,
-        design: null as { type: 'template' | 'upload', value: number | File | null } | null,
+        design: null as { type: 'template' | 'upload', value: number | File | string | null, original_filename?: string } | null,
         note: "",
     });
 
@@ -159,7 +160,8 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         setNote("");
         setSelectedTemplate(null);
         setUploadedFile(null);
-        setInitialCartItemOptions(null); // Reset juga state ini
+        setInitialCartItemOptions(null);
+        setExistingDesign(null);
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
     };
@@ -179,7 +181,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                     const { product: productData, selectedOptions: itemOptions } = response.data;
                     setProduct(productData);
                     setInitialCartItemOptions(itemOptions); // Simpan data awal
-                    
+
                     // Pre-populate state from cart item data
                     setQuantity(itemOptions.quantity || 1);
                     setSelectedOptions(itemOptions.variant || {});
@@ -190,9 +192,9 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                             (t: DesignTemplate) => t.id === itemOptions.design.value
                         );
                         if (foundTemplate) setSelectedTemplate(foundTemplate);
+                    } else if (itemOptions.design?.type === 'upload') {
+                        setExistingDesign(itemOptions.design);
                     }
-                    // Note: Pre-populating uploaded files is not feasible for security reasons.
-                    // The user will have to re-upload if they want to change the custom design.
 
                 } else {
                     setProduct(response.data);
@@ -216,14 +218,13 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
             setData('design', { type: 'template', value: selectedTemplate.id });
         } else if (uploadedFile) {
             setData('design', { type: 'upload', value: uploadedFile });
-        } else if (isEditMode && initialCartItemOptions?.design) {
-            // Jika dalam mode edit dan tidak ada pilihan baru, pertahankan desain lama
-            setData('design', initialCartItemOptions.design);
-        } 
+        } else if (existingDesign) {
+            setData('design', { ...existingDesign, type: 'upload' });
+        }
         else {
             setData('design', null);
         }
-    }, [selectedTemplate, uploadedFile, isEditMode, initialCartItemOptions]);
+    }, [selectedTemplate, uploadedFile, existingDesign]);
      useEffect(() => {
         if (product) setData('product_id', product.id_produk);
     }, [product]);
@@ -264,6 +265,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         if (file) {
             setUploadedFile(file);
             setSelectedTemplate(null);
+            setExistingDesign(null);
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             setPreviewUrl(URL.createObjectURL(file));
         }
@@ -280,6 +282,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const handleSelectTemplate = (template: DesignTemplate) => {
         setSelectedTemplate(template);
         setUploadedFile(null);
+        setExistingDesign(null);
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
     };
@@ -287,12 +290,11 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     // --- Logika Tombol Aksi & Tooltip ---
     const hasAttributes = Object.keys(attributeGroups).length > 0;
     const areAllOptionsSelected = hasAttributes ? Object.keys(selectedOptions).length === Object.keys(attributeGroups).length : true;
-    
-    const hasInitialDesign = !!initialCartItemOptions?.design;
-    const isDesignSelected = !product?.enable_design_feature || 
-                             !!selectedTemplate || 
-                             !!uploadedFile || 
-                             (isEditMode && hasInitialDesign && !selectedTemplate && !uploadedFile);
+
+    const isDesignSelected = !product?.enable_design_feature ||
+                             !!selectedTemplate ||
+                             !!uploadedFile ||
+                             !!existingDesign;
 
     const isActionDisabled = !areAllOptionsSelected || !isDesignSelected || processing || !product;
 
@@ -316,20 +318,51 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     };
 
     const handleUpdateCart = () => {
-        if (!cartItemId) return;
-        // Untuk update, kita perlu mengirim data form secara eksplisit
-        // karena `patch` tidak otomatis mengambilnya seperti `post` dari `useForm`
-        patch(route('cart.update', { cartItemId }), {
-            data, // Kirim state form saat ini
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Keranjang berhasil diperbarui.');
-                onClose();
-            },
-            onError: (errors) => {
-                console.error("Update Error:", errors);
-                toast.error('Gagal memperbarui keranjang.');
+        if (!cartItemId || !product) return;
+
+        // Manually set processing to true
+        setData('processing', true);
+
+        const formData = new FormData();
+        formData.append('product_id', product.id_produk.toString());
+        formData.append('quantity', quantity.toString());
+        formData.append('note', note);
+        formData.append('_method', 'PATCH'); // Method Spoofing for Laravel
+
+        Object.entries(selectedOptions).forEach(([key, value]) => {
+            formData.append(`variant[${key}]`, value.toString());
+        });
+
+        const currentDesign = data.design;
+        if (currentDesign) {
+            formData.append('design[type]', currentDesign.type);
+            if (currentDesign.type === 'upload') {
+                if (currentDesign.value instanceof File) {
+                    formData.append('design[value]', currentDesign.value);
+                } else if (typeof currentDesign.value === 'string') {
+                    formData.append('design[value]', currentDesign.value);
+                    if (currentDesign.original_filename) {
+                        formData.append('design[original_filename]', currentDesign.original_filename);
+                    }
+                }
+            } else if (currentDesign.type === 'template') {
+                formData.append('design[value]', currentDesign.value?.toString() ?? '');
             }
+        }
+
+        axios.post(route('cart.update', { cartItemId }), formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(() => {
+            toast.success('Keranjang berhasil diperbarui.');
+            // Manually reload the page to see changes, as we are bypassing Inertia's auto-refresh
+            window.location.reload();
+            onClose();
+        }).catch((error) => {
+            console.error("Update Error:", error.response?.data?.errors);
+            toast.error('Gagal memperbarui keranjang.');
+        }).finally(() => {
+            // Manually set processing to false
+            setData('processing', false);
         });
     };
 
@@ -382,7 +415,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                                                 {product.design_templates?.length > 0 && <TabsTrigger value="template">Pilih Template</TabsTrigger>}
                                                 {product.allow_custom_design && <TabsTrigger value="upload">Unggah Desain</TabsTrigger>}
                                             </TabsList>
-                                            
+
                                             {product.design_templates?.length > 0 && (
                                                 <TabsContent value="template" className="mt-4 p-1">
                                                     <p className="text-sm text-gray-600 mb-3">Pilih salah satu template desain yang tersedia:</p>
@@ -412,6 +445,17 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                                                                 </div>
                                                             </div>
                                                             <Button variant="ghost" size="icon" className='absolute top-1 right-1 h-7 w-7 text-gray-500 hover:text-red-600' onClick={removeUploadedFile}><X className='h-5 w-5' /></Button>
+                                                        </div>
+                                                    ) : existingDesign ? (
+                                                        <div className='relative w-full rounded-lg border-2 border-dashed border-blue-500 bg-blue-50 p-4 text-center'>
+                                                            <div className="flex items-center gap-3">
+                                                                <img src={`/storage/${existingDesign.value}`} alt="Desain saat ini" className='h-16 w-16 rounded-md object-cover border' />
+                                                                <div className="text-left">
+                                                                    <p className='font-semibold text-blue-800'>Desain Saat Ini:</p>
+                                                                    <p className='truncate text-sm text-gray-700' title={existingDesign.original_filename}>{existingDesign.original_filename}</p>
+                                                                </div>
+                                                            </div>
+                                                            <Button variant="ghost" size="icon" className='absolute top-1 right-1 h-7 w-7 text-gray-500 hover:text-red-600' title="Hapus & ganti desain" onClick={() => setExistingDesign(null)}><X className='h-5 w-5' /></Button>
                                                         </div>
                                                     ) : (
                                                         <div {...getRootProps()} className={cn('flex h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors', isDragActive ? 'border-orange-500 bg-orange-50' : 'border-gray-300 hover:border-orange-400 hover:bg-gray-50')}>

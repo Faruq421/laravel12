@@ -398,7 +398,7 @@ setSelectedOptions(variant || {});
         const isDesignSelected = !product?.enable_design_feature || 
                                  !!selectedTemplate || 
                                  !!uploadedFile || 
-                                 (isEditMode && hasInitialDesign && !selectedTemplate && !uploadedFile);
+                                 (isEditMode && haInitialDesign && !selectedTemplate && !uploadedFile);
         ```
         Logika baru ini berarti: "Desain dianggap terpilih jika: fitur desain nonaktif, ATAU template baru dipilih, ATAU file baru diunggah, ATAU (dalam mode edit) pengguna belum memilih yang baru TAPI item aslinya sudah memiliki desain."
 ---
@@ -457,4 +457,186 @@ setSelectedOptions(variant || {});
 
     // Menjadi seperti ini:
     <RadioGroup onValueChange={...} value={selectedOptions[values[0].attribute.id]?.toString() || ''} ...>
+    ```
+
+---
+
+### Langkah 11: Perbaikan Kritis - Konsistensi Data Keranjang & Logika Kuantitas
+
+**Masalah:** Ditemukan beberapa bug kritis yang saling berhubungan: 1) Desain kustom yang diunggah tidak tersimpan di keranjang. 2) Jumlah total item di ikon keranjang menampilkan angka yang salah dan sangat besar. 3) Memperbarui item dengan desain kustom gagal.
+
+**Akar Masalah:** Penyebab utamanya adalah inkonsistensi data di `CartController`. Metode `store` (untuk item baru) menyimpan data varian dalam format string, sementara metode `update` menyimpannya dalam format array mentah. Ketidakcocokan ini menyebabkan logika untuk memeriksa item yang sudah ada selalu gagal, sehingga item baru selalu ditambahkan alih-alih kuantitasnya diperbarui. Ini merusak struktur data sesi keranjang dan menyebabkan semua gejala di atas.
+
+**Solusi:** Kita akan membuat metode `store` konsisten dengan `update` dengan cara menyimpan data `variant` mentah langsung dari request.
+
+1.  **Perbaiki Logika Penyimpanan Varian di `CartController.php`**
+    -   Buka `app/Http/Controllers/Features/CartController.php`.
+    -   Di dalam metode `store`, cari baris di mana item baru ditambahkan ke keranjang.
+    -   Ubah nilai dari kunci `'variant'` agar menyimpan `$request->variant` secara langsung, bukan hasil dari `$this->getVariantDetails`.
+
+    ```php
+    // Di dalam CartController.php -> store()
+
+    // Ganti baris ini:
+    'variant' => $variantDetails['details'],
+
+    // Menjadi seperti ini:
+    'variant' => $request->variant,
+    ```
+
+---
+
+### Langkah 12: Perbaikan Kritis Final - Stabilitas Keranjang & Kalkulasi Kuantitas
+
+**Masalah:** Bug "jumlah keranjang salah" (`01` atau `31`) dan kegagalan update desain masih terjadi. Ini disebabkan oleh dua masalah: 1) Logika kalkulasi jumlah total item di `HandleInertiaRequests` salah. 2) Metode `update` di `CartController` menggunakan strategi "hapus dan buat ulang" yang tidak stabil dan rawan kesalahan saat ID item berubah.
+
+**Solusi:** Kita akan melakukan dua perbaikan final untuk menstabilkan seluruh sistem keranjang.
+
+1.  **Perbaiki Kalkulasi Total Kuantitas Keranjang:**
+    -   Buka `app/Http/Middleware/HandleInertiaRequests.php`.
+    -   Cari metode `share`. Di dalamnya, temukan logika yang menghitung `cart.quantity`.
+    -   Ganti logika tersebut dengan cara yang aman dan benar: menjumlahkan nilai `quantity` dari semua item di dalam keranjang.
+
+    ```php
+    // Di dalam HandleInertiaRequests.php -> share()
+
+    'cart' => function () {
+        $cart = session('cart', ['items' => [], 'subtotal' => 0]);
+        // PERBAIKAN: Ganti count() dengan kalkulasi yang benar
+        $quantity = is_array($cart['items']) ? array_sum(array_column($cart['items'], 'quantity')) : 0;
+        return [
+            'items' => $cart['items'],
+            'subtotal' => $cart['subtotal'],
+            'quantity' => $quantity,
+        ];
+    },
+    ```
+
+2.  **Refactor Metode `update` di `CartController` agar Lebih Aman:**
+    -   Buka `app/Http/Controllers/Features/CartController.php`.
+    -   Ganti seluruh metode `update` dengan versi baru yang memodifikasi item secara langsung di dalam sesi (*in-place*). Ini menghilangkan kebutuhan untuk menghapus dan membuat ulang item, sehingga jauh lebih stabil dan tidak bergantung pada pembuatan ulang ID yang cocok.
+
+    ```php
+    // Di dalam CartController.php, ganti seluruh metode update()
+    public function update(Request $request, $cartItemId)
+    {
+        $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+            'note' => ['nullable', 'string'],
+            // Validasi lain bisa ditambahkan jika perlu
+        ]);
+
+        $cart = session()->get('cart', ['items' => [], 'subtotal' => 0]);
+
+        // Pastikan item ada sebelum diupdate
+        if (!isset($cart['items'][$cartItemId])) {
+            return redirect()->back()->with('error', 'Item tidak ditemukan di keranjang.');
+        }
+
+        // Proses desain baru jika ada
+        $designData = $this->processDesignData($request);
+
+        // Update data item secara langsung
+        $cart['items'][$cartItemId]['quantity'] = $request->quantity;
+        $cart['items'][$cartItemId]['note'] = $request->note;
+        
+        // Hanya perbarui desain jika ada data desain baru yang valid
+        if ($designData) {
+            $cart['items'][$cartItemId]['design'] = $designData;
+        }
+
+        // Hitung ulang subtotal dan simpan ke sesi
+        $this->recalculateCartSubtotal($cart);
+        session()->put('cart', $cart);
+
+        return redirect()->back()->with('success', 'Keranjang berhasil diperbarui!');
+    }
+    ```
+---
+
+### Langkah 13: Perbaikan Kritis - Penanganan Unggahan File Desain
+
+**Masalah:** Bug paling krusial yang tersisa adalah file desain kustom yang diunggah oleh pelanggan tidak pernah benar-benar disimpan di server. Akibatnya, data desain di keranjang tidak valid dan tidak bisa digunakan lebih lanjut.
+
+**Akar Masalah:** Logika di dalam metode `processDesignData` pada `CartController` tidak cukup tangguh. Metode tersebut gagal mengidentifikasi file yang diunggah dengan benar dari struktur data request yang dikirim oleh Inertia, terutama karena pengecekan `$request->hasFile('design.value')` tidak selalu berhasil dalam semua skenario.
+
+**Solusi:** Kita akan merombak total metode `processDesignData` agar lebih eksplisit dan aman dalam menangani data desain. Logika baru ini akan secara spesifik memeriksa `design.type` terlebih dahulu.
+
+1.  **Refactor Metode `processDesignData` di `CartController`:**
+    -   Buka `app/Http/Controllers/Features/CartController.php`.
+    -   Ganti seluruh metode `processDesignData` dengan versi baru yang lebih andal.
+
+    ```php
+    // Di dalam CartController.php, ganti seluruh metode processDesignData()
+    private function processDesignData(Request $request): ?array
+    {
+        // Ambil tipe desain dari input, default null jika tidak ada.
+        $designType = $request->input('design.type');
+
+        // Kasus 1: Unggahan Desain Kustom
+        if ($designType === 'upload' && $request->hasFile('design.value')) {
+            $file = $request->file('design.value');
+            $path = $file->store('public/designs');
+            
+            return [
+                'type' => 'upload',
+                'value' => str_replace('public/', '', $path),
+                'original_filename' => $file->getClientOriginalName(),
+            ];
+        }
+
+        // Kasus 2: Pemilihan Template
+        if ($designType === 'template' && $request->filled('design.value')) {
+            return [
+                'type' => 'template',
+                'value' => $request->input('design.value'),
+            ];
+        }
+
+        // Kasus 3: Tidak ada desain atau data tidak valid
+        return null;
+    }
+    ```
+    Perbaikan ini memastikan bahwa file yang diunggah akan selalu terdeteksi, disimpan ke `storage/app/public/designs`, dan path-nya yang benar disimpan ke dalam sesi keranjang. Ini menyelesaikan bug inti yang dilaporkan.
+---
+
+### Langkah 14: Perbaikan Komprehensif - Alur Edit Desain Kustom
+
+**Masalah:** Alur untuk mengedit item dengan desain kustom di keranjang rusak. Desain yang sudah ada tidak ditampilkan di modal, dan saat memperbarui item (misalnya, hanya mengubah kuantitas), desain yang ada malah terhapus dari sesi.
+
+**Solusi:** Perbaikan ini melibatkan backend dan frontend untuk memastikan desain kustom ditangani dengan benar selama siklus edit.
+
+1.  **Backend: `processDesignData` Dibuat Lebih Cerdas**
+    -   Buka `app/Http/Controllers/Features/CartController.php`.
+    -   Metode `processDesignData` diubah untuk mengenali tiga skenario: (1) unggahan file baru, (2) pemilihan template baru, dan (3) **data desain lama yang dikirim kembali oleh frontend**. Ini mencegah desain terhapus secara tidak sengaja.
+
+    ```php
+    // Di dalam CartController.php -> processDesignData()
+    // ... (kode sudah diperbarui di langkah sebelumnya)
+    // Logika baru dapat membedakan antara file baru dan path file lama (string).
+    ```
+
+2.  **Frontend: Menampilkan Desain yang Ada & Pengiriman Data yang Benar**
+    -   Buka `resources/js/components/ProductQuickView.tsx`.
+    -   **State Baru:** Menambahkan state `existingDesign` untuk menyimpan detail desain yang sudah ada saat komponen dimuat dalam mode edit.
+    -   **Tampilan Pratinjau:** JSX diperbarui untuk menampilkan pratinjau gambar dan nama file dari `existingDesign`, memberikan umpan balik visual kepada pengguna.
+    -   **Logika Pengiriman:** Fungsi `handleUpdateCart` diubah untuk menggunakan metode `POST` dengan `_method: 'PATCH'` untuk pengiriman `FormData` yang andal, memastikan file (atau path file lama) dikirim dengan benar.
+
+    ```tsx
+    // Di dalam ProductQuickView.tsx
+
+    // Menampilkan pratinjau desain yang ada
+    {existingDesign ? (
+        <div className='...'>
+            <img src={`/storage/${existingDesign.value}`} />
+            <p>{existingDesign.original_filename}</p>
+        </div>
+    ) : ( /* Tampilkan dropzone */ )}
+
+    // Logika baru di handleUpdateCart untuk mengirim FormData
+    post(route('cart.update', { cartItemId }), {
+        forceFormData: true,
+        _method: 'PATCH',
+        // ...data lainnya
+    });
     ```

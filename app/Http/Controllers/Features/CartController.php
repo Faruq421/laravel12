@@ -54,8 +54,10 @@ class CartController extends Controller
         $product = Product::where('id_produk', $request->product_id)->firstOrFail();
         $cart = session()->get('cart', ['items' => [], 'subtotal' => 0]);
 
+        $designData = $this->processDesignData($request);
+
         // Generate a unique key for each cart item based on product ID and options
-        $optionsIdentifier = md5(serialize($request->variant) . serialize($request->design));
+        $optionsIdentifier = md5(serialize($request->variant) . serialize($designData));
         $cartItemId = $product->id_produk . '-' . $optionsIdentifier;
 
         // Check if item already exists in cart
@@ -73,8 +75,8 @@ class CartController extends Controller
                 'price' => $product->harga + $variantDetails['price_modifier'],
                 'image' => $product->gambar_url,
                 'quantity' => $request->quantity,
-                'variant' => $variantDetails['details'],
-                'design' => $request->design,
+                'variant' => $request->variant,
+                'design' => $designData,
             ];
         }
 
@@ -101,15 +103,20 @@ class CartController extends Controller
 
         $cart = session()->get('cart', ['items' => [], 'subtotal' => 0]);
 
+        // Pastikan item yang akan diupdate ada
         if (!isset($cart['items'][$cartItemId])) {
             return redirect()->back()->with('error', 'Item tidak ditemukan di keranjang.');
         }
 
-        $product = Product::findOrFail($request->product_id);
-
+        // Hapus item lama untuk digantikan dengan yang baru.
+        // Ini adalah cara paling andal untuk memastikan semua data (termasuk ID jika opsi berubah) diperbarui.
         unset($cart['items'][$cartItemId]);
 
-        $optionsIdentifier = md5(serialize($request->variant) . serialize($request->design));
+        $product = Product::findOrFail($request->product_id);
+        $designData = $this->processDesignData($request);
+
+        // Buat ulang item dengan data baru (mirip dengan metode store)
+        $optionsIdentifier = md5(serialize($request->variant) . serialize($designData));
         $newCartItemId = $product->id_produk . '-' . $optionsIdentifier;
 
         $variantDetails = $this->getVariantDetails($request->variant);
@@ -120,10 +127,10 @@ class CartController extends Controller
             'name' => $product->nama_produk,
             'price' => $product->harga + $variantDetails['price_modifier'],
             'image' => $product->gambar_url,
-            'quantity' => $request->quantity,
+            'quantity' => (int) $request->quantity,
             'variant' => $request->variant,
             'note' => $request->note,
-            'design' => $request->design,
+            'design' => $designData,
         ];
 
         $this->recalculateCartSubtotal($cart);
@@ -146,6 +153,47 @@ class CartController extends Controller
         }
 
         return redirect()->back()->with('success', 'Item removed from cart successfully!');
+    }
+
+    private function processDesignData(Request $request): ?array
+    {
+        // If no design data is sent at all, do nothing.
+        if (!$request->has('design') || !$request->input('design.type')) {
+            return null;
+        }
+
+        $designType = $request->input('design.type');
+        $designValue = $request->input('design.value');
+
+        // Case 1: New custom design upload
+        if ($designType === 'upload' && $request->hasFile('design.value')) {
+            $file = $request->file('design.value');
+            $path = $file->store('public/designs');
+            
+            return [
+                'type' => 'upload',
+                'value' => str_replace('public/', '', $path),
+                'original_filename' => $file->getClientOriginalName(),
+            ];
+        }
+
+        // Case 2: An existing design is being preserved during an update.
+        // The value will be a string path, not a file.
+        if ($designType === 'upload' && is_string($designValue)) {
+            // We trust the frontend is sending back the data it received.
+            return $request->input('design');
+        }
+
+        // Case 3: Template selection
+        if ($designType === 'template' && !empty($designValue)) {
+            return [
+                'type' => 'template',
+                'value' => $designValue,
+            ];
+        }
+
+        // Case 4: Fallback for invalid data
+        return null;
     }
 
     /**
