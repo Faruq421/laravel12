@@ -93,6 +93,17 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
+### 9 Oktober 2025
+- **Perbaikan Kritis: Fungsionalitas Edit Desain di Keranjang**
+    -   **Backend:** Mengimplementasikan logika di `CartController` untuk secara otomatis mendeteksi dan menghapus file desain kustom lama dari server saat pelanggan menggantinya dengan template atau unggahan baru di dalam keranjang. Ini mencegah penumpukan file yatim piatu di storage.
+    -   **Frontend:** Mengatasi bug di modal edit (`ProductQuickView.tsx`) di mana template desain yang sudah dipilih tidak ditampilkan kembali dengan benar. Masalah ini disebabkan oleh perbandingan tipe data yang tidak cocok (`string` vs `number`) dan telah diperbaiki.
+- **Peningkatan (UI/UX): Logika & Tampilan Ikon Keranjang**
+    -   **Perbaikan (Frontend):** Memperbaiki logika penghitungan pada ikon keranjang (`CartSheet.tsx`). Angka pada ikon sekarang secara akurat menampilkan jumlah *item unik*, bukan total kuantitas produk, sesuai dengan perilaku yang diharapkan.
+    -   **Refactor (Frontend):** Menyederhanakan antarmuka keranjang dengan menghapus tombol tambah/kurang kuantitas. Pelanggan kini dapat mengubah kuantitas melalui alur "Edit" yang lebih jelas.
+- **Peningkatan (UI/UX): Desain Ulang Total Komponen Keranjang Belanja**
+    -   **Frontend:** Merombak total `CartSheet.tsx` dengan antarmuka yang lebih modern, rapi, dan *user-friendly*.
+    -   **UI/UX (Frontend):** Memperbaiki tata letak kartu item untuk hierarki visual yang lebih baik, menambahkan garis pemisah antar item, dan menyempurnakan desain *header* serta *footer* untuk pengalaman pengguna yang lebih profesional.
+
 ### 8 Oktober 2025
 - **Fitur: Fungsionalitas Penuh Keranjang Belanja**
     -   **Backend:** Mengimplementasikan logika `CartController` untuk menambah (`store`), memperbarui (`update`), dan menghapus (`destroy`) item dari keranjang belanja berbasis sesi. Mendaftarkan rute `POST`, `PATCH`, dan `DELETE` yang sesuai.
