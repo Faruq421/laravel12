@@ -45,8 +45,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'cart' => function () {
                 $cart = session('cart', ['items' => [], 'subtotal' => 0]);
-                // PERBAIKAN: Ganti count() dengan kalkulasi yang benar
-                $quantity = is_array($cart['items']) ? array_sum(array_column($cart['items'], 'quantity')) : 0;
+                // Mengubah logika untuk menghitung jumlah item unik, bukan total kuantitas
+                $quantity = is_array($cart['items']) ? count($cart['items']) : 0;
                 return [
                     'items' => $cart['items'],
                     'subtotal' => $cart['subtotal'],

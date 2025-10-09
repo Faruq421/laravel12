@@ -123,7 +123,7 @@ export function CartSheet() {
     };
 
     const totalItems = useMemo(() => {
-        return cartItems.reduce((acc, item) => acc + item.quantity, 0);
+        return cartItems.length;
     }, [cartItems]);
 
     return (
