@@ -78,7 +78,7 @@ const CartItemCard = ({ item, onEdit }: { item: CartItem; onEdit: (itemId: strin
                         </Button>
                     </div>
                     <div className="flex items-center gap-1">
-                         <Button variant="ghost" size="icon" onClick={() => onEdit(item.id)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(item.id)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
                             <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={removeItem} className="text-red-500 hover:text-red-700">
