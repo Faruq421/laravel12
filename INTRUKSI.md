@@ -640,3 +640,54 @@ setSelectedOptions(variant || {});
         // ...data lainnya
     });
     ```
+---
+
+### Langkah 15: Perbaikan Final - Stabilitas Metode Update Keranjang
+
+**Masalah:** Error `The POST method is not supported` terus muncul saat memperbarui item keranjang yang memiliki file, meskipun sudah menggunakan *method spoofing*. Ini menandakan `useForm` dari Inertia tidak menangani `FormData` dan `_method` secara bersamaan dengan andal. Selain itu, logika `update` di backend kurang efisien.
+
+**Solusi:** Dua perbaikan final diterapkan untuk menstabilkan total alur pembaruan keranjang.
+
+1.  **Frontend: Beralih ke `axios` untuk Update**
+    -   Buka `resources/js/components/ProductQuickView.tsx`.
+    -   Fungsi `handleUpdateCart` ditulis ulang sepenuhnya untuk **tidak lagi menggunakan `post` dari `useForm` Inertia**.
+    -   Sebagai gantinya, fungsi ini sekarang menggunakan `axios.post` secara langsung. Ini memberikan kontrol penuh untuk membuat objek `FormData`, menambahkan semua data (termasuk file dan `_method: 'PATCH'`), dan mengirimkannya dengan header yang benar. Ini adalah cara paling andal untuk memastikan Laravel menerima request `PATCH` yang valid.
+    -   Karena ini mem-bypass alur Inertia, `window.location.reload()` ditambahkan untuk me-refresh halaman dan menampilkan keranjang yang diperbarui.
+
+    ```tsx
+    // Di dalam ProductQuickView.tsx
+    const handleUpdateCart = () => {
+        // ...
+        axios.post(route('cart.update', { cartItemId }), formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(() => {
+            toast.success('Keranjang berhasil diperbarui.');
+            window.location.reload(); // <-- Reload manual
+            onClose();
+        }).catch(/* ... */);
+    };
+    ```
+
+2.  **Backend: Refactor Metode `update` di `CartController`**
+    -   Buka `app/Http/Controllers/Features/CartController.php`.
+    -   Metode `update` di-refactor untuk menggunakan strategi "hapus dan buat ulang".
+    -   Ini memastikan bahwa setiap pembaruan (baik itu kuantitas, varian, atau desain) menghasilkan entri keranjang yang sepenuhnya baru dan konsisten, menghilangkan potensi bug dari pembaruan parsial. Validasi juga dibuat lebih komprehensif.
+
+    ```php
+    // Di dalam CartController.php
+    public function update(Request $request, $cartItemId)
+    {
+        $request->validate([
+            'product_id' => ['required', 'exists:products,id_produk'],
+            'quantity' => ['required', 'integer', 'min:1'],
+            // ... validasi lainnya
+        ]);
+
+        // ...
+        // 1. Hapus item lama dari sesi
+        unset($cart['items'][$cartItemId]);
+        // 2. Buat item baru dengan data yang diperbarui
+        // ... (logika mirip dengan metode store)
+    }
+    ```
+    Kombinasi kedua perbaikan ini secara definitif menyelesaikan masalah error metode `POST` dan menstabilkan seluruh fungsionalitas edit keranjang.

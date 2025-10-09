@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class CartController extends Controller
 {
@@ -108,12 +109,27 @@ class CartController extends Controller
             return redirect()->back()->with('error', 'Item tidak ditemukan di keranjang.');
         }
 
+        // --- LOGIKA PENGHAPUSAN FILE LAMA ---
+        $oldItem = $cart['items'][$cartItemId];
+        $newDesignData = $this->processDesignData($request);
+
+        // Cek jika item lama punya desain upload
+        if (isset($oldItem['design']['type']) && $oldItem['design']['type'] === 'upload') {
+            $isDesignChanged = serialize($oldItem['design']) !== serialize($newDesignData);
+            
+            // Jika desain berubah (menjadi template, upload baru, atau dihapus), hapus file lama.
+            if ($isDesignChanged && isset($oldItem['design']['value'])) {
+                Storage::delete('public/' . $oldItem['design']['value']);
+            }
+        }
+        // --- AKHIR LOGIKA PENGHAPUSAN ---
+
         // Hapus item lama untuk digantikan dengan yang baru.
         // Ini adalah cara paling andal untuk memastikan semua data (termasuk ID jika opsi berubah) diperbarui.
         unset($cart['items'][$cartItemId]);
 
         $product = Product::findOrFail($request->product_id);
-        $designData = $this->processDesignData($request);
+        $designData = $newDesignData; // Gunakan data desain yang sudah diproses
 
         // Buat ulang item dengan data baru (mirip dengan metode store)
         $optionsIdentifier = md5(serialize($request->variant) . serialize($designData));

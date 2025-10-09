@@ -189,7 +189,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
 
                     if (itemOptions.design?.type === 'template' && productData.design_templates) {
                         const foundTemplate = productData.design_templates.find(
-                            (t: DesignTemplate) => t.id === itemOptions.design.value
+                            (t: DesignTemplate) => t.id == itemOptions.design.value
                         );
                         if (foundTemplate) setSelectedTemplate(foundTemplate);
                     } else if (itemOptions.design?.type === 'upload') {
