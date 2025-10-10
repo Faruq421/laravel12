@@ -47,10 +47,62 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
-        // SYNC_VALIDATION_STORE_START
-        Order::create($request->all());
-        // SYNC_VALIDATION_STORE_END
-        return redirect()->route('orders.index')->with('message', 'Order created successfully.');
+        $request->validate([
+            'selected_items' => 'required|array|min:1',
+            'selected_items.*' => 'string', // Pastikan setiap item adalah ID string
+        ]);
+
+        $allCartItems = session('cart', []);
+        $selectedItemIds = $request->input('selected_items');
+
+        // Filter keranjang untuk hanya memproses item yang dipilih
+        $itemsToProcess = array_filter($allCartItems, function ($item) use ($selectedItemIds) {
+            return in_array($item['id'], $selectedItemIds);
+        });
+
+        if (empty($itemsToProcess)) {
+            return redirect()->back()->withErrors(['cart' => 'No selected items to process.']);
+        }
+
+        $productIds = array_column($itemsToProcess, 'product_id');
+        $productPrices = Product::whereIn('id', $productIds)->pluck('price', 'id');
+
+        $totalPrice = array_reduce($itemsToProcess, function ($carry, $item) use ($productPrices) {
+            $price = $productPrices[$item['product_id']] ?? 0;
+            return $carry + ($price * $item['quantity']);
+        }, 0);
+
+        $order = null;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($itemsToProcess, $totalPrice, $productPrices, &$order) {
+            $order = Order::create([
+                'user_id' => auth()->id(),
+                'order_number' => 'ORD-' . strtoupper(uniqid()),
+                'total_amount' => $totalPrice,
+                'order_status' => 'pending',
+            ]);
+
+            foreach ($itemsToProcess as $item) {
+                $price = $productPrices[$item['product_id']] ?? 0;
+                $order->items()->create([
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $price,
+                    'design_info' => [
+                        'custom_design_url' => $item['custom_design_url'] ?? null,
+                        'design_template_id' => $item['design_template_id'] ?? null,
+                        'notes' => $item['notes'] ?? null,
+                    ],
+                ]);
+            }
+        });
+
+        // Hapus hanya item yang sudah di-checkout dari sesi
+        $remainingCartItems = array_filter($allCartItems, function ($item) use ($selectedItemIds) {
+            return !in_array($item['id'], $selectedItemIds);
+        });
+        session(['cart' => $remainingCartItems]);
+
+        return redirect()->route('orders.show', $order)->with('message', 'Order created successfully.');
     }
 
     public function show(Order $order)

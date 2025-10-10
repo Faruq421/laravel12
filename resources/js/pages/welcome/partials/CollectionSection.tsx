@@ -69,7 +69,7 @@ export default function CollectionSection({ isInView, products }: CollectionSect
                                     </CardContent>
                                 </Link>
                                 <div className="p-5 bg-white border-t border-gray-100 flex justify-between items-center">
-                                    <p className="font-bold text-xl text-gray-900">Rp {product.harga.toLocaleString('id-ID')}</p>
+                                    <p className="font-bold text-xl text-gray-900">Rp {(product.harga || 0).toLocaleString('id-ID')}</p>
                                     {/* Tombol diubah untuk membuka Quick View */}
                                     <Button
                                         size="icon"

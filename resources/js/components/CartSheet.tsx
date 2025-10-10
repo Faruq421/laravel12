@@ -1,13 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator'; // Import Separator
+import { Checkbox } from '@/components/ui/checkbox';
 import { usePage, Link, router } from '@inertiajs/react';
 import { ShoppingCart, Trash2, Pencil, PackageOpen } from 'lucide-react';
 import { PageProps } from '@/types';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ProductQuickView } from './ProductQuickView';
+import { Label } from '@/components/ui/label';
 
-// Tipe data dari backend
 interface CartItem {
     id: string;
     product_id: number;
@@ -23,10 +23,17 @@ interface CartData {
     subtotal: number;
 }
 
-// --- Komponen Internal ---
-
-// Kartu untuk setiap item di keranjang (Desain Baru)
-const CartItemCard = ({ item, onEdit }: { item: CartItem; onEdit: (itemId: string) => void; }) => {
+const CartItemCard = ({
+    item,
+    onEdit,
+    isSelected,
+    onSelect,
+}: {
+    item: CartItem;
+    onEdit: (itemId: string) => void;
+    isSelected: boolean;
+    onSelect: (itemId: string) => void;
+}) => {
     const removeItem = () => {
         router.delete(route('cart.destroy', item.id), {
             preserveState: true,
@@ -35,7 +42,13 @@ const CartItemCard = ({ item, onEdit }: { item: CartItem; onEdit: (itemId: strin
     };
 
     return (
-        <div className="flex items-start gap-4 py-4">
+        <div className="flex items-center gap-4 py-4">
+            <Checkbox
+                id={`item-${item.id}`}
+                checked={isSelected}
+                onCheckedChange={() => onSelect(item.id)}
+                className="h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white"
+            />
             <img src={item.image} alt={item.name} className="h-24 w-24 rounded-lg object-cover border" />
             <div className="flex flex-col justify-between flex-1 h-24">
                 <div>
@@ -43,14 +56,14 @@ const CartItemCard = ({ item, onEdit }: { item: CartItem; onEdit: (itemId: strin
                     {item.variant && item.variant.length > 0 && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.variant.join(' / ')}</p>
                     )}
-                     <p className="text-xs text-gray-500 dark:text-gray-400">Qty: {item.quantity}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Qty: {item.quantity}</p>
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                     <p className="text-md font-bold text-gray-800 dark:text-gray-200">
+                    <p className="text-md font-bold text-gray-800 dark:text-gray-200">
                         Rp {(item.price * item.quantity).toLocaleString('id-ID')}
                     </p>
                     <div className="flex items-center">
-                         <Button variant="ghost" size="icon" onClick={() => onEdit(item.id)} className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 h-8 w-8">
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(item.id)} className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 h-8 w-8">
                             <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={removeItem} className="text-red-500 hover:text-red-700 h-8 w-8">
@@ -63,7 +76,6 @@ const CartItemCard = ({ item, onEdit }: { item: CartItem; onEdit: (itemId: strin
     );
 };
 
-// Tampilan saat keranjang kosong
 const EmptyCart = () => (
     <div className="flex h-full flex-col items-center justify-center text-center">
         <PackageOpen className="h-28 w-28 text-gray-300 dark:text-gray-600" />
@@ -77,9 +89,6 @@ const EmptyCart = () => (
     </div>
 );
 
-
-// --- Komponen Utama ---
-
 export function CartSheet() {
     const { props } = usePage<PageProps>();
     const cart = (props.cart as CartData | null) || { items: {}, subtotal: 0 };
@@ -87,15 +96,40 @@ export function CartSheet() {
 
     const [isQuickViewOpen, setQuickViewOpen] = useState(false);
     const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+    useEffect(() => {
+        // Saat keranjang berubah, pilih semua item secara default
+        setSelectedItems(cartItems.map(item => item.id));
+    }, [cart]);
+
+    const handleSelectItem = (itemId: string) => {
+        setSelectedItems(prev =>
+            prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
+        );
+    };
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedItems(cartItems.map(item => item.id));
+        } else {
+            setSelectedItems([]);
+        }
+    };
 
     const handleOpenEdit = (cartItemId: string) => {
         setEditingCartItemId(cartItemId);
         setQuickViewOpen(true);
     };
 
-    const totalItems = useMemo(() => {
-        return cartItems.length;
-    }, [cartItems]);
+    const totalItems = useMemo(() => cartItems.length, [cartItems]);
+    const isAllSelected = useMemo(() => totalItems > 0 && selectedItems.length === totalItems, [selectedItems, totalItems]);
+
+    const selectedSubtotal = useMemo(() => {
+        return cartItems
+            .filter(item => selectedItems.includes(item.id))
+            .reduce((total, item) => total + item.price * item.quantity, 0);
+    }, [selectedItems, cartItems]);
 
     return (
         <>
@@ -118,9 +152,26 @@ export function CartSheet() {
                     {cartItems.length > 0 ? (
                         <>
                             <div className="flex-1 overflow-y-auto px-6">
+                                <div className="flex items-center gap-3 border-b pb-2 mb-2">
+                                    <Checkbox
+                                        id="select-all"
+                                        checked={isAllSelected}
+                                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                                        className="h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white"
+                                    />
+                                    <Label htmlFor="select-all" className="text-sm font-medium">
+                                        Pilih Semua ({selectedItems.length})
+                                    </Label>
+                                </div>
                                 <div className="divide-y divide-gray-200 dark:divide-gray-800">
                                     {cartItems.map((item) => (
-                                        <CartItemCard key={item.id} item={item} onEdit={handleOpenEdit} />
+                                        <CartItemCard
+                                            key={item.id}
+                                            item={item}
+                                            onEdit={handleOpenEdit}
+                                            isSelected={selectedItems.includes(item.id)}
+                                            onSelect={handleSelectItem}
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -129,13 +180,18 @@ export function CartSheet() {
                                 <div className="w-full space-y-4">
                                     <div className="flex justify-between text-lg font-semibold text-gray-800 dark:text-gray-100">
                                         <span>Subtotal</span>
-                                        <span>Rp {cart.subtotal.toLocaleString('id-ID')}</span>
+                                        <span>Rp {selectedSubtotal.toLocaleString('id-ID')}</span>
                                     </div>
                                     <p className="text-xs text-center text-gray-500 dark:text-gray-400">
                                         Biaya pengiriman dan pajak akan dihitung saat checkout.
                                     </p>
                                     <div className="grid grid-cols-1 gap-3 pt-2">
-                                        <Button asChild size="lg" className="bg-[#FF6500] text-white hover:bg-[#FF6500]/90 text-lg h-12 rounded-full font-bold">
+                                        <Button
+                                            asChild
+                                            size="lg"
+                                            className="bg-[#FF6500] text-white hover:bg-[#FF6500]/90 text-lg h-12 rounded-full font-bold"
+                                            disabled={selectedItems.length === 0}
+                                        >
                                             <Link href="#">Checkout</Link>
                                         </Button>
                                         <SheetClose asChild>
