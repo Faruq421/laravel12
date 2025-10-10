@@ -88,8 +88,7 @@ export default function CheckoutPage({ auth }: PageProps) {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="zip">Kode Pos</Label>
-                                            <Input id="zip" placeholder="12345" />
-                                        </div>
+                                            <Input id="zip" placeholder="12345" />  </div>
                                     </div>
                                 </CardContent>
                             </Card>

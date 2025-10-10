@@ -131,6 +131,16 @@ export function CartSheet() {
             .reduce((total, item) => total + item.price * item.quantity, 0);
     }, [selectedItems, cartItems]);
 
+    const handleCheckout = () => {
+        if (selectedItems.length > 0) {
+            router.get(route('checkout.create'), {
+                selected_items: selectedItems,
+            }, {
+                preserveState: true,
+            });
+        }
+    };
+
     return (
         <>
             <Sheet>
@@ -187,12 +197,12 @@ export function CartSheet() {
                                     </p>
                                     <div className="grid grid-cols-1 gap-3 pt-2">
                                         <Button
-                                            asChild
                                             size="lg"
                                             className="bg-[#FF6500] text-white hover:bg-[#FF6500]/90 text-lg h-12 rounded-full font-bold"
                                             disabled={selectedItems.length === 0}
+                                            onClick={handleCheckout}
                                         >
-                                            <Link href="#">Checkout</Link>
+                                            Checkout
                                         </Button>
                                         <SheetClose asChild>
                                             <Button asChild variant="ghost" size="lg" className="text-lg h-12 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
