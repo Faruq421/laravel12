@@ -1,50 +1,118 @@
-# 💎 Panduan Proyek Gemini
+# 💎 Panduan Proyek Gemini (Versi Diperpanjang)
 
-Dokumen ini adalah panduan komprehensif untuk memahami arsitektur, teknologi, dan alur kerja pengembangan proyek Gemini.
-
----
-
-## 1. Konsep Utama: Scaffolding Berbasis Stub
-
-> Metodologi inti proyek ini adalah **Scaffolding Berbasis Stub**. Alih-alih membuat file secara manual, kita menggunakan perintah `php artisan make:feature` untuk menghasilkan seluruh kerangka fitur (Model, Controller, View React, dll.) dari *template* yang ada di direktori `stubs/feature`. Tujuannya adalah mempercepat pengembangan, memastikan konsistensi kode, dan mengurangi pekerjaan repetitif.
-
-Aplikasi ini adalah web *full-stack* dengan **Laravel** di backend dan **React** (via **Inertia.js**) di frontend, dirancang sebagai fondasi yang kuat untuk aplikasi e-commerce atau sistem manajemen konten yang kompleks.
+Dokumen ini adalah panduan komprehensif yang berfungsi sebagai **sumber kebenaran tunggal** untuk memahami arsitektur, tumpukan teknologi, konvensi, dan alur kerja pengembangan proyek Gemini.
 
 ---
 
-## 2. Tumpukan Teknologi
+## 1. Filosofi & Konsep Utama: Scaffolding Berbasis Stub
 
--   **Backend**: PHP 8.2+, Laravel 12
--   **Frontend**: React 19, TypeScript, Vite, Tailwind CSS 4
--   **Integrasi**: Inertia.js, Ziggy
--   **Komponen UI**: Shadcn/UI, Radix UI, Lucide Icons
--   **Tools**: Composer, NPM, Git, Pest, ESLint, Prettier
+> DNA dari proyek ini adalah metodologi **Scaffolding Berbasis Stub**. Ini bukan sekadar fitur, melainkan fondasi alur kerja kita. Alih-alih membuat file secara manual, kita **wajib** menggunakan perintah `php artisan make:feature {NamaFitur}`.
+
+Perintah ini secara otomatis menghasilkan seluruh kerangka fitur—mulai dari Model dan Controller di backend hingga file View React di frontend—berdasarkan *template* yang tersimpan di direktori `stubs/feature`.
+
+**Tujuan utama metodologi ini adalah:**
+1.  **Kecepatan Pengembangan:** Mengeliminasi pekerjaan repetitif dan mempercepat inisiasi fitur baru secara drastis.
+2.  **Konsistensi Kode:** Memastikan semua fitur memiliki struktur direktori, penamaan file, dan boilerplate kode yang seragam.
+3.  **Mengurangi Kesalahan:** Mencegah kesalahan manusiawi yang sering terjadi saat melakukan setup manual.
+
+Aplikasi ini adalah web *full-stack* dengan **Laravel** di backend dan **React** (via **Inertia.js**) di frontend, dirancang sebagai fondasi yang kuat dan dapat diskalakan untuk aplikasi e-commerce atau sistem manajemen konten yang kompleks.
+
+---
+
+## 2. Tumpukan Teknologi (Tech Stack)
+
+Setiap teknologi dipilih untuk perannya yang spesifik dalam menciptakan alur kerja yang mulus antara backend dan frontend.
+
+-   **Backend**:
+    -   **PHP 8.2+ & Laravel 12**: Fondasi backend yang kuat, menyediakan fitur-fitur modern seperti routing, ORM (Eloquent), dan sistem antrian.
+    -   **Pest**: Framework testing PHP yang elegan dan berfokus pada kesederhanaan untuk pengujian fitur (Feature) dan unit (Unit).
+
+-   **Frontend**:
+    -   **React 19 & TypeScript**: Membangun antarmuka pengguna yang interaktif, dinamis, dan *type-safe*, mengurangi bug saat runtime.
+    -   **Vite**: Alat build frontend generasi baru yang sangat cepat, memberikan pengalaman pengembangan yang luar biasa dengan Hot Module Replacement (HMR).
+    -   **Tailwind CSS 4**: Framework CSS utility-first untuk mendesain antarmuka kustom dengan cepat tanpa meninggalkan HTML.
+
+-   **Jembatan Backend-Frontend**:
+    -   **Inertia.js**: "Lem" ajaib yang menghubungkan backend Laravel dengan frontend React. Memungkinkan kita membangun aplikasi halaman tunggal (SPA) modern tanpa perlu membuat API terpisah. Data dilewatkan dari Controller Laravel langsung sebagai *props* ke komponen React.
+    -   **Ziggy**: Memungkinkan penggunaan nama rute Laravel (misalnya, `route('products.show')`) langsung di dalam kode JavaScript/React, menjaga konsistensi antara backend dan frontend.
+
+-   **Komponen UI & Desain**:
+    -   **Shadcn/UI**: Kumpulan komponen UI yang dapat digunakan kembali, indah, dan aksesibel, dibangun di atas Radix UI dan Tailwind CSS. Komponen-komponen ini (seperti `Button`, `Card`, `Dialog`) dapat kita kustomisasi sepenuhnya.
+    -   **Radix UI**: Pustaka komponen UI *headless* tingkat rendah yang menyediakan fungsionalitas dan aksesibilitas, sementara kita menangani styling-nya.
+    -   **Lucide Icons**: Pustaka ikon yang bersih, konsisten, dan mudah digunakan.
+
+-   **Tools & Lingkungan**:
+    -   **Composer**: Manajer dependensi untuk PHP.
+    -   **NPM**: Manajer dependensi untuk JavaScript.
+    -   **ESLint & Prettier**: Menjaga kualitas dan konsistensi gaya penulisan kode di seluruh proyek. Dikonfigurasi di `eslint.config.js` dan `.prettierrc`.
 
 ---
 
 ## 3. Arsitektur & Alur Kerja Inti
 
-Proyek ini menggabungkan **Arsitektur Berbasis Fitur** dengan metodologi **Scaffolding Berbasis Stub**.
+Proyek ini mengadopsi **Arsitektur Berbasis Fitur (Feature-Based Architecture)** yang dimodifikasi, di mana logika bisnis utama diisolasi ke dalam modul-modul fitur yang independen.
 
-#### a. Struktur Direktori Kunci
+#### a. Struktur Direktori Kunci & Perannya
 
--   `app/Features`: Pusat logika bisnis, dikelompokkan per fitur.
--   `routes/features`: Rute untuk setiap fitur, dimuat secara otomatis.
--   `resources/js/Pages/Features`: Komponen halaman React, mencerminkan struktur backend.
--   `stubs/feature`: **Cetak Biru Proyek**. Berisi semua *template* yang digunakan untuk *scaffolding*.
+-   `app/Features/{NamaFitur}`: **Pusat Logika Bisnis Backend**. Setiap direktori di sini mewakili satu fitur utama aplikasi (misalnya, `Product`, `Order`). Di dalamnya terdapat:
+    -   `{NamaFitur}.php`: Model Eloquent untuk fitur tersebut.
+    -   `{NamaFitur}Controller.php`: Controller yang menangani permintaan HTTP, logika bisnis, dan merender halaman React melalui Inertia.
 
-#### b. Perintah Utama: `make:feature`
+-   `routes/features/{nama_fitur}.php`: **Rute Khusus Fitur**. Setiap fitur memiliki file rutenya sendiri. File-file ini secara otomatis dimuat oleh aplikasi (dikonfigurasi di `bootstrap/app.php`), sehingga kita tidak perlu mendaftarkannya secara manual.
 
-Ini adalah perintah inti untuk memulai fitur baru.
+-   `resources/js/Pages/Features/{NamaFitur}`: **Komponen Halaman React**. Struktur di sini mencerminkan `app/Features`. Setiap Controller di backend akan merender komponen halaman dari direktori ini. Contoh: `ProductController@show` akan merender `resources/js/Pages/Features/Product/Show.tsx`.
 
-```bash
-# Contoh: Membuat fitur untuk manajemen pesanan
-php artisan make:feature Order
-```
+-   `stubs/feature`: **Cetak Biru Proyek**. Ini adalah direktori paling penting untuk metodologi kita. Berisi semua *template* file (`.stub`) yang digunakan oleh perintah `make:feature`. Jika kita ingin mengubah struktur default dari fitur yang baru dibuat, kita memodifikasi file di sini.
+
+#### b. Alur Kerja Pengembangan Fitur Baru (Contoh: Fitur "Ulasan")
+
+Berikut adalah langkah-langkah konkret untuk membuat fitur baru dari awal hingga akhir:
+
+1.  **Scaffolding (Perancah)**: Jalankan perintah inti kita.
+    ```bash
+    php artisan make:feature Review
+    ```
+    Perintah ini akan secara otomatis membuat file-file berikut:
+    -   `app/Features/Review/Review.php` (Model)
+    -   `app/Features/Review/ReviewController.php` (Controller)
+    -   `database/migrations/xxxx_xx_xx_xxxxxx_create_reviews_table.php` (Migrasi)
+    -   `routes/features/review.php` (File Rute)
+    -   `resources/js/Pages/Features/Review/Index.tsx` (Halaman Daftar)
+    -   `resources/js/Pages/Features/Review/FormPage.tsx` (Halaman Buat/Edit)
+
+2.  **Backend - Database & Model**:
+    -   Buka file migrasi yang baru dibuat, definisikan skema tabel `reviews` (misalnya, `product_id`, `user_id`, `rating`, `comment`).
+    -   Jalankan migrasi: `php artisan migrate`.
+    -   Buka model `Review.php`, definisikan relasi (misalnya, `belongsTo(Product::class)`).
+
+3.  **Backend - Controller & Rute**:
+    -   Buka `ReviewController.php`. Isi logika untuk metode `index`, `store`, `update`, `destroy`.
+    -   Contoh di `index()`: `return inertia('Features/Review/Index', ['reviews' => Review::all()]);`
+    -   Buka `routes/features/review.php` dan definisikan rute yang diperlukan, misalnya `Route::resource('reviews', ReviewController::class);`.
+
+4.  **Frontend - Halaman React**:
+    -   Buka `Index.tsx`. Gunakan *props* `reviews` yang dikirim dari controller untuk menampilkan daftar ulasan.
+    -   Buka `FormPage.tsx`. Buat formulir untuk mengirim ulasan baru menggunakan hook `useForm` dari Inertia.
+
+5.  **Verifikasi**: Jalankan server (`composer dev`) dan akses rute yang baru Anda buat untuk memastikan semuanya berfungsi.
 
 ---
 
-## 4. Panduan Setup Cepat
+## 4. Sistem & Konvensi Penting Lainnya
+
+-   **Routing & Ziggy**: Semua rute fitur dimuat dari `routes/features`. Setelah menambahkan rute baru, jalankan `php artisan ziggy:generate` agar Ziggy dapat mengenali rute tersebut di frontend. Ini sangat penting untuk menghindari error `route '...' is not in the route list`.
+
+-   **Manajemen State Frontend**: Sebagian besar manajemen state ditangani oleh Inertia. Untuk formulir, kita menggunakan hook `useForm` yang disediakan Inertia. Untuk state global (seperti data keranjang), kita membagikannya dari Laravel melalui middleware `HandleInertiaRequests.php`.
+
+-   **Komponen UI**: Komponen UI umum (yang tidak spesifik untuk satu halaman) ditempatkan di `resources/js/components`. Kita sangat menganjurkan penggunaan kembali komponen dari `shadcn/ui` untuk menjaga konsistensi visual.
+
+-   **Styling**: Proyek ini menggunakan Tailwind CSS. Semua styling harus dilakukan menggunakan kelas utilitas langsung di dalam komponen `.tsx`. CSS global hanya ada di `resources/css/app.css` untuk beberapa pengaturan dasar.
+
+-   **Autentikasi & Otorisasi**: Sistem autentikasi menggunakan Laravel Breeze/Fortify sebagai dasarnya. Otorisasi berbasis peran diimplementasikan melalui `RoleMiddleware.php`. Peran pengguna (misalnya, `admin`, `customer`) didefinisikan di model `User`.
+
+---
+
+## 5. Panduan Setup Cepat
 
 1.  **Instalasi Dependensi:**
     ```bash
@@ -57,35 +125,30 @@ php artisan make:feature Order
     -   Jalankan `php artisan key:generate`.
     -   Sesuaikan koneksi database di `.env`.
 
-3.  **Setup Database:**
+3.  **Setup Database & Data Awal:**
     ```bash
     php artisan migrate --seed
     ```
 
-4.  **Jalankan Server Pengembangan:**
+4.  **Generate File Ziggy:**
+    ```bash
+    php artisan ziggy:generate
+    ```
+
+5.  **Jalankan Server Pengembangan:**
     ```bash
     composer dev
     ```
-    Aplikasi kini dapat diakses di `http://127.0.0.1:8000`.
+    Perintah `dev` adalah alias yang menjalankan `php artisan serve` dan `npm run dev` secara bersamaan. Aplikasi kini dapat diakses di `http://127.0.0.1:8000`.
 
 ---
 
-## 5. Status & Fitur Unggulan
-
--   [x] **Fondasi & Alur Kerja Solid**: Sistem *scaffolding* (`make:feature`) berfungsi penuh.
--   [x] **Autentikasi & Otorisasi**: Login dan *middleware* berbasis peran (`admin`, `customer`).
--   [x] **Manajemen Produk Lanjutan**: Atribut dinamis, harga varian, dan manajemen inventaris.
--   [x] **Manajemen Desain Terintegrasi**: Antarmuka *drag-and-drop* untukelola *template* desain.
--   [x] **Halaman Detail Produk Interaktif**: Pemilihan varian dengan harga dinamis dan opsi unggah desain.
-
----
-
-## 6. Alur Kerja Pembaruan Changelog (Semi-Otoromatis)
+## 6. Alur Kerja Pembaruan Changelog (Semi-Otomatis)
 
 Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 
-1.  **Pengembang (Anda):** Selesaikan pekerjaan dan lakukan `git commit` dengan pesan yang jelas.
-2.  **Asisten AI (Gemini):** Berikan perintah **"Tolong perbarui changelog"**. Asisten akan menganalisis *commit* terakhir, membuat draf entri, dan meminta persetujuan Anda sebelum menambahkannya.
+1.  **Pengembang (Anda):** Selesaikan pekerjaan dan lakukan `git commit` dengan pesan yang jelas dan deskriptif.
+2.  **Asisten AI (Gemini):** Berikan perintah **"Tolong perbarui changelog"**. Asisten akan menganalisis *commit* terakhir, membuat draf entri, dan meminta persetujuan Anda sebelum menambahkannya ke dokumen ini.
 
 ---
 
@@ -133,7 +196,7 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
     -   **Perbaikan (Frontend):** Memastikan semua referensi ke dasbor di antarmuka pengguna, seperti item menu navigasi (`lib/navigation.ts`) dan tautan logo (`components/app-header.tsx`), menunjuk ke rute `dashboard` yang baru dibuat.
     -   **Catatan Tambahan:** Perbaikan ini mengoreksi upaya sebelumnya yang salah mengarahkan admin ke halaman `products.index`.
 - **Perbaikan: Masalah Rute Ziggy & Pendaftaran Rute Fitur**
-    -   **Masalah:** Setelah login, admin terjebak di halaman login karena error JavaScript `Ziggy error: route 'products.index' is not in the route list`.
+    -   **Masalah:** Setelah login, admin terjak di halaman login karena error JavaScript `Ziggy error: route 'products.index' is not in the route list`.
     -   **Akar Masalah:** Sistem routing Laravel di `bootstrap/app.php` tidak secara otomatis memuat file rute yang berada di dalam subdirektori `routes/features`, sehingga rute-rute tersebut tidak diketahui oleh Ziggy.
     -   **Perbaikan (Backend):** Memodifikasi `bootstrap/app.php` untuk secara dinamis memindai dan mendaftarkan semua file rute dari direktori `routes/features`.
     -   **Perbaikan (Infrastruktur):** Menjalankan `php artisan route:clear` dan `php artisan ziggy:generate` untuk membersihkan cache lama dan membuat ulang file `ziggy.js` dengan daftar rute yang lengkap.
