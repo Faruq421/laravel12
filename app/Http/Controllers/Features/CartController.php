@@ -8,9 +8,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class CartController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $cart = session('cart', ['items' => [], 'subtotal' => 0]);
+
+        return Inertia::render('Features/Cart/Index', [
+            'cartItems' => $cart['items'],
+            'subtotal' => $cart['subtotal'],
+        ]);
+    }
+
     public function getItemDetails(string $cartItemId): JsonResponse
     {
         $cart = session()->get('cart', []);

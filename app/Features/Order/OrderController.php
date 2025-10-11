@@ -16,7 +16,20 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        // Logic for admin to view all orders
+        $user = auth()->user();
+
+        // Logic for Customers
+        if ($user->role !== 'admin') {
+            $query = Order::where('user_id', $user->id)
+                ->with('items.product')
+                ->latest();
+
+            return Inertia::render('Features/Order/Index', [
+                'orders' => $query->paginate(10)->withQueryString(),
+            ]);
+        }
+
+        // Logic for Admins
         $model = new Order;
         $columns = array_diff($model->getConnection()->getSchemaBuilder()->getColumnListing($model->getTable()), $model->getHidden());
         $query = Order::query();

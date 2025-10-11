@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, Link } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { AuthenticatedLayout } from '@/layouts/authenticated-layout';
 import { PageProps } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
@@ -268,12 +269,20 @@ export default function Checkout({ auth, cartItems }: CheckoutPageProps) {
             <Head title="Checkout" />
             <div className="bg-gray-50 min-h-screen">
                 <div className="container mx-auto max-w-7xl py-16 px-4 sm:px-6 lg:px-8">
-                    <div className="max-w-3xl mx-auto mb-12 text-center">
+                    <div className="max-w-3xl mx-auto mb-12 text-center relative">
                         <div className="flex justify-center items-center mb-4">
                             {/* Placeholder untuk logo minimalis */}
                             <svg className="h-10 w-auto text-orange-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10-5-10 5z" /></svg>
                         </div>
                         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">Secure Checkout</h1>
+                        <div className="mt-4">
+                            <Button variant="ghost" asChild>
+                                <Link href={route('cart.index')}>
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Kembali ke Keranjang
+                                </Link>
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="max-w-2xl mx-auto mb-12">
@@ -286,7 +295,7 @@ export default function Checkout({ auth, cartItems }: CheckoutPageProps) {
                             <Accordion type="single" collapsible defaultValue="item-1">
                                 <AccordionItem value="item-1">
                                     <AccordionTrigger className="text-lg font-semibold">
-                                        Lihat Ringkasan Pesanan
+                                        Lihat Ringkasans Pesanan
                                     </AccordionTrigger>
                                     <AccordionContent>
                                         <OrderSummary {...summaryProps} />
