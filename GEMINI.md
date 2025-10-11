@@ -112,6 +112,22 @@ Berikut adalah langkah-langkah konkret untuk membuat fitur baru dari awal hingga
 
 ---
 
+## 5. Branding & Aset Visual
+
+Bagian ini mendefinisikan aset visual dan standar branding untuk menjaga konsistensi di seluruh aplikasi.
+
+-   **Logo Utama**:
+    -   **Lokasi File**: `storage/app/public/logo/logo.png`
+    -   **URL Publik**: Logo harus selalu diakses melalui path `/storage/logo/logo.png`.
+    -   **Penggunaan**: Gunakan logo ini di header utama, halaman login, checkout, dan semua titik branding utama lainnya.
+
+-   **Palet Warna Resmi**:
+    -   **Primer (Aksi Utama)**: `Oranye (#FF6500)`. Digunakan untuk tombol utama (CTA), tautan penting, ikon aktif, dan elemen yang membutuhkan perhatian pengguna.
+    -   **Teks & Elemen UI**: `Abu-abu Tua (#1F2937)`. Digunakan untuk sebagian besar teks, judul, dan ikon standar untuk memastikan keterbacaan yang optimal.
+    -   **Latar Belakang & Aksen**: `Abu-abu Sangat Terang (#F9FAFB)` atau `Putih (#FFFFFF)`. Digunakan sebagai warna latar belakang utama halaman dan kartu untuk memberikan tampilan yang bersih dan modern.
+
+---
+
 ## 5. Panduan Setup Cepat
 
 1.  **Instalasi Dependensi:**

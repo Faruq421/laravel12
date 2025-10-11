@@ -80,12 +80,27 @@ const OrderSummary = ({ cartItems, total, subtotal, shippingCost, processing, cu
                 )}
                 {currentStep === steps.length - 1 && (
                     <Button type="submit" className="w-full bg-[#FF6500] hover:bg-[#FF6500]/90 text-lg h-12 rounded-full font-bold" size="lg" disabled={processing}>
-                        {processing ? <Loader2 className="animate-spin" /> : 'Buat Pesanan'}
+                        {processing ? <Loader2 className="animate-spin" /> : 'Konfirmasi Pesanan'}
                     </Button>
                 )}
-                {currentStep > 0 && (
-                    <Button type="button" variant="ghost" onClick={handlePrevStep} className="w-full text-gray-600">
+                {currentStep > 0 ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePrevStep}
+                        className="w-full h-12 rounded-full font-bold border-[#FF6500] text-[#FF6500] hover:bg-red-600 hover:text-white hover:border-red-600"
+                    >
                         Kembali
+                    </Button>
+                ) : (
+                    <Button
+                        variant="outline"
+                        asChild
+                        className="w-full h-12 rounded-full font-bold border-[#FF6500] text-[#FF6500] hover:bg-red-600 hover:text-white hover:border-red-600"
+                    >
+                        <Link href={route('welcome')}>
+                            Kembali ke Halaman Utama
+                        </Link>
                     </Button>
                 )}
             </div>
@@ -269,19 +284,13 @@ export default function Checkout({ auth, cartItems }: CheckoutPageProps) {
             <Head title="Checkout" />
             <div className="bg-gray-50 min-h-screen">
                 <div className="container mx-auto max-w-7xl py-16 px-4 sm:px-6 lg:px-8">
-                    <div className="max-w-3xl mx-auto mb-12 text-center relative">
-                        <div className="flex justify-center items-center mb-4">
-                            {/* Placeholder untuk logo minimalis */}
-                            <svg className="h-10 w-auto text-orange-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10-5-10 5z" /></svg>
-                        </div>
-                        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">Secure Checkout</h1>
-                        <div className="mt-4">
-                            <Button variant="ghost" asChild>
-                                <Link href={route('cart.index')}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Kembali ke Keranjang
-                                </Link>
-                            </Button>
+                    <div className="max-w-5xl mx-auto">
+                        {/* Judul Halaman */}
+                        <div className="text-center mb-12">
+                             <Link href={route('welcome')} className="inline-block mb-8">
+                                <img src="/storage/logo/logo.png" alt="Logo Utama" className="h-12 w-auto" />
+                            </Link>
+                            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">Secure Checkout</h1>
                         </div>
                     </div>
 
