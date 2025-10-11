@@ -80,7 +80,7 @@ php artisan make:feature Order
 
 ---
 
-## 6. Alur Kerja Pembaruan Changelog (Semi-Otomatis)
+## 6. Alur Kerja Pembaruan Changelog (Semi-Otoromatis)
 
 Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 
@@ -92,6 +92,16 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 ## Riwayat Perubahan
 
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
+
+### 10 Oktober 2025
+- **Peningkatan (UI/UX): Desain Ulang Total Halaman Checkout**
+    -   **Fitur (Frontend):** Mengimplementasikan *header* minimalis pada halaman *checkout* untuk mengurangi distraksi dan menjaga fokus pengguna pada proses transaksi.
+    -   **Fitur (Frontend):** Menambahkan komponen *accordion* untuk ringkasan pesanan pada tampilan *mobile*, memastikan informasi penting seperti total harga selalu terlihat tanpa perlu *scroll*.
+    -   **UI/UX (Frontend):** Menyempurnakan formulir alamat dengan *placeholder* yang informatif dan menambahkan opsi "Simpan alamat" untuk transaksi di masa depan.
+    -   **UI/UX (Frontend):** Mengganti teks "Segera Hadir" pada metode pembayaran dengan visualisasi ikon metode pembayaran (Kartu Kredit, Transfer Bank, dll.) dalam keadaan nonaktif, memberikan gambaran yang lebih profesional.
+    -   **UI/UX (Frontend):** Menambahkan tautan "Ubah" pada langkah konfirmasi, memungkinkan pengguna untuk kembali dan mengoreksi alamat atau metode pembayaran dengan mudah.
+    -   **Peningkatan (Frontend):** Meningkatkan kepercayaan pengguna dengan menambahkan ikon gembok "Transaksi Aman" dan menampilkan detail varian produk di ringkasan pesanan.
+    -   **Peningkatan (Frontend):** Menambahkan ikon *spinner* pada tombol "Buat Pesanan" untuk memberikan umpan balik visual yang lebih jelas saat proses sedang berjalan.
 
 ### 9 Oktober 2025
 - **Perbaikan Kritis: Fungsionalitas Edit Desain di Keranjang**
@@ -139,7 +149,7 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
         -   Membungkus seluruh opsi desain lainnya (izin unggah kustom, area unggah templat) dalam blok render kondisional yang hanya tampil jika saklar utama aktif.
     -   **Frontend (Halaman Pelanggan):** Mengintegrasikan logika saklar utama pada `Product/Show.tsx`.
         -   Fungsi `renderDesignOptions()` kini mengembalikan `null` (tidak merender apapun) jika `product.enable_design_feature` bernilai `false`.
-        -   Logika variabel `isDesignSelected` diperbarui agar selalu `true` (mengabaikan validasi desain) saat fitur dinonaktifkan, sehingga tombol "Tambah ke Keranjang" dapat berfungsi.
+        -   Logika variabel `isDesignSelected` diperbarui agar selalu `true` (mengabaikan validasi desain) saat fitur dinaktifkan, sehingga tombol "Tambah ke Keranjang" dapat berfungsi.
         -   Pesan pada `Tooltip` juga disesuaikan agar tidak lagi meminta pelanggan memilih desain jika fiturnya memang tidak aktif untuk produk tersebut.
 - **Peningkatan (UI/UX): Komponen Input Jumlah Produk (*Quantity Stepper*)**
     -   **Refactor (Frontend):** Merombak total komponen input jumlah pada `Product/Show.tsx` untuk pengalaman pengguna yang superior.
