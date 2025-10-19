@@ -172,6 +172,12 @@ Proyek ini menggunakan alur kerja semi-otomatis untuk mencatat perkembangan.
 
 *(Entri baru akan ditambahkan di sini oleh Asisten AI)*
 
+### 19 Oktober 2025
+- **Perbaikan: Crash Halaman Daftar Pesanan Admin**
+    -   **Masalah:** Halaman daftar pesanan (`/orders`) di panel admin mengalami *crash* dengan *error* JavaScript `TypeError: Cannot read properties of undefined (reading 'data')`.
+    -   **Akar Masalah:** Terjadi ketidaksesuaian nama *prop* data antara backend dan frontend. `OrderController` mengirimkan data pesanan dalam variabel `orders`, sementara komponen React `Order/Index.tsx` mengharapkan variabel tersebut bernama `items` setelah refaktor sebelumnya untuk konsistensi.
+    -   **Perbaikan (Backend):** Memperbarui metode `index` di `OrderController.php` untuk mengubah nama kunci dari `orders` menjadi `items` saat mengirim data ke Inertia. Perubahan ini menyelaraskan controller dengan ekspektasi komponen frontend dan berhasil mengatasi *error*.
+
 ### 10 Oktober 2025
 - **Peningkatan (UI/UX): Desain Ulang Total Halaman Checkout**
     -   **Fitur (Frontend):** Mengimplementasikan *header* minimalis pada halaman *checkout* untuk mengurangi distraksi dan menjaga fokus pengguna pada proses transaksi.

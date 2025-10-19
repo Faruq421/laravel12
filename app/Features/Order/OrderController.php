@@ -49,7 +49,7 @@ class OrderController extends Controller
         }
 
         return Inertia::render('Features/Order/Index', [
-            'orders' => $query->with('user')->paginate(10)->withQueryString(),
+            'items' => $query->with('user')->paginate(10)->withQueryString(),
             'filters' => $request->only(['search', 'sort_by', 'sort_dir']),
         ]);
     }

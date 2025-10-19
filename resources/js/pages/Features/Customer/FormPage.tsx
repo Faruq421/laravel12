@@ -39,7 +39,7 @@ export default function FormPage({ auth, item }: PageProps<{ item?: Customer }>)
     ];
 
     // SYNC_FORM_DATA_START
-    const { data, setData, post, put, processing, errors } = useForm<{
+const { data, setData, post, put, processing, errors } = useForm<{
     user_id: string;
     phone_number: string;
     address: string;

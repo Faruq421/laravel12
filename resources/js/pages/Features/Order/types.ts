@@ -1,6 +1,7 @@
 // resources/js/Pages/Features/Order/types.ts
 
 import { Product } from "@/Pages/Features/Product/types";
+import { User } from "@/types";
 
 export interface OrderItem {
     id: number;
@@ -31,4 +32,5 @@ export interface Order {
     items: OrderItem[];
     created_at: string;
     updated_at: string;
+    user: User;
 }
