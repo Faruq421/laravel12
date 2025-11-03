@@ -19,9 +19,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { ShoppingCart, Plus, Minus, Star, StarHalf, UploadCloud, X, CheckCircle2 } from 'lucide-react';
 
-// --- Layouts & Partials ---
-import Header from '@/pages/welcome/partials/Header';
-import Footer from '@/pages/welcome/partials/Footer';
+import SiteLayout from '@/layouts/SiteLayout';
 import { ProductCard } from '@/components/ProductCard'; // Import ProductCard
 
 // --- Tipe Data ---
@@ -129,7 +127,7 @@ const ProductGallery = ({ product, onTemplateSelect, selectedTemplateId }: {
 
 // --- Komponen Utama Halaman ---
 
-export default function ProductShowPage({ product, auth, related_products }: PageProps) {
+export default function ProductShowPage({ product, related_products }: PageProps) {
     // --- State Manajemen ---
     const [quantity, setQuantity] = useState<number>(1);
     const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>({});
@@ -242,11 +240,10 @@ export default function ProductShowPage({ product, auth, related_products }: Pag
     const handleBuyNow = () => toast.info(`Proses checkout untuk ${product.nama_produk}...`);
 
     return (
-        <>
+        <SiteLayout>
             <Head title={product.nama_produk} />
             <Toaster richColors position="top-center" />
             <div className="bg-gray-50 font-sans text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                <Header auth={auth} />
                 <main>
                     <div className="container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
                         {/* Bagian Atas: Galeri & Panel Aksi */}
@@ -403,8 +400,7 @@ export default function ProductShowPage({ product, auth, related_products }: Pag
                         )}
                     </div>
                 </main>
-                <Footer isInView={true} />
             </div>
-        </>
+        </SiteLayout>
     );
 }

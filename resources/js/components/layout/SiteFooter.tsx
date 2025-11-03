@@ -3,11 +3,9 @@ import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-// --- PERUBAHAN DI SINI: Terima properti 'isInView' ---
-export default function Footer({ isInView }: { isInView: boolean }) {
+export default function SiteFooter() {
     return (
-        // --- PERUBAHAN DI SINI: Terapkan kelas animasi ---
-        <footer className={`bg-gray-800 text-white transition-all duration-1000 ease-out ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <footer className="bg-gray-800 text-white">
             <div className="container mx-auto px-6 py-12">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                     <div>
@@ -46,4 +44,3 @@ export default function Footer({ isInView }: { isInView: boolean }) {
         </footer>
     );
 }
-

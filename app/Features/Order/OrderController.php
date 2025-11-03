@@ -219,4 +219,19 @@ class OrderController extends Controller
         $order->delete();
         return redirect()->route('orders.index')->with('message', 'Order deleted successfully.');
     }
+
+    public function myOrders(Request $request)
+    {
+        // 1. Ambil pesanan HANYA untuk pengguna yang sedang login
+        //    Kita juga memuat relasi 'items' untuk menampilkan detail produk
+        $orders = Order::where('user_id', $request->user()->id)
+            ->with('items.product') // Asumsi relasi ini ada
+            ->latest() // Tampilkan yang terbaru di atas
+            ->paginate(10); // Gunakan paginasi
+
+        // 2. Render halaman React BARU, kirim data 'orders' sebagai props
+        return Inertia::render('Features/Order/MyOrdersPage', [
+            'orders' => $orders,
+        ]);
+    }
 }
