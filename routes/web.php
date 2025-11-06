@@ -20,6 +20,10 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::delete('/{cartItemId}', [CartController::class, 'destroy'])->name('destroy');
 });
 
+// Rute untuk Halaman Toko "Produk & Jasa"
+Route::get('/produk-jasa', [ProductController::class, 'shopIndex'])
+     ->name('shop.index');
+
 // Rute khusus Admin
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/dashboard', function () {

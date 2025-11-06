@@ -129,7 +129,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                                 <ul className="space-y-3">
                                                     {category.items.map((item) => (
                                                         <li key={item}>
-                                                            <Link href="#" className="text-gray-500 hover:text-[#FF6500] text-sm block transition-colors">
+                                                            <Link href={route('shop.index', { category: category.title })} className="text-gray-500 hover:text-[#FF6500] text-sm block transition-colors">
                                                                 {item}
                                                             </Link>
                                                         </li>
@@ -139,7 +139,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                         ))}
                                     </div>
                                     <div className="border-t bg-gray-50 p-6 text-center">
-                                        <Link href="#" className="text-[#FF6500] font-semibold hover:underline">
+                                        <Link href={route('shop.index')} className="text-[#FF6500] font-semibold hover:underline">
                                             Lihat Semua Produk &rarr;
                                         </Link>
                                     </div>
@@ -247,7 +247,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                                             <li key={item}>
                                                                 <DialogClose asChild>
                                                                     <DrawerClose asChild>
-                                                                        <Link href="#" className="text-gray-600 hover:text-[#FF6500] text-sm block transition-colors">
+                                                                        <Link href={route('shop.index', { category: category.title })} className="text-gray-600 hover:text-[#FF6500] text-sm block transition-colors">
                                                                             {item}
                                                                         </Link>
                                                                     </DrawerClose>
@@ -259,7 +259,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                             ))}
                                             <DialogClose asChild>
                                                 <DrawerClose asChild>
-                                                    <Link href="#" className="text-[#FF6500] font-semibold hover:underline text-base pl-2 mt-4 block">
+                                                    <Link href={route('shop.index')} className="text-[#FF6500] font-semibold hover:underline text-base pl-2 mt-4 block">
                                                         Lihat Semua Produk &rarr;
                                                     </Link>
                                                 </DrawerClose>

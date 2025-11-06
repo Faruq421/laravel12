@@ -3,9 +3,11 @@
 namespace App\Features\Product;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -57,6 +59,61 @@ class ProductController extends Controller
         return Inertia::render('Features/Product/Show', [
             'product' => $product->load('category', 'attributeValues.attribute', 'designTemplates'),
             'related_products' => $related_products,
+        ]);
+    }
+
+    /**
+     * Menampilkan Halaman Toko "Produk & Jasa" untuk pelanggan.
+     */
+    public function shopIndex(Request $request)
+    {
+        // 1. Validasi input dari URL (query string)
+        $request->validate([
+            'sort' => 'in:newest,price-low,price-high',
+            'category' => 'string|nullable|exists:categories,name',
+            'min_price' => 'numeric|min:0',
+            'max_price' => 'numeric|gte:min_price',
+        ]);
+
+        // 2. Mulai Query Builder
+        $productsQuery = Product::query()->with('category');
+
+        // 3. Terapkan Filter
+        $productsQuery->when($request->category, function (Builder $query, $categoryName) {
+            $query->whereHas('category', function (Builder $subQuery) use ($categoryName) {
+                $subQuery->where('name', $categoryName);
+            });
+        });
+
+        $productsQuery->when($request->min_price, function (Builder $query, $minPrice) {
+            $query->where('harga', '>=', $minPrice);
+        });
+
+        $productsQuery->when($request->max_price, function (Builder $query, $maxPrice) {
+            // Jangan filter jika max price adalah nilai maksimum
+            if ($maxPrice < 1000000) {
+                 $query->where('harga', '<=', $maxPrice);
+            }
+        });
+
+        // 4. Terapkan Sorting
+        if ($request->sort === 'price-low') {
+            $productsQuery->orderBy('harga', 'asc');
+        } elseif ($request->sort === 'price-high') {
+            $productsQuery->orderBy('harga', 'desc');
+        } else {
+            $productsQuery->orderBy('created_at', 'desc'); // Default: 'newest'
+        }
+
+        // 5. Paginasi (Setelah semua filter & sort)
+        // 'withQueryString' sangat penting agar filter tetap ada saat pindah halaman
+        $products = $productsQuery->paginate(6)->withQueryString();
+
+        // 6. Render Halaman Inertia
+        return Inertia::render('Features/Product/ShopPage', [
+            'products' => $products, // Ini adalah data paginasi dari Laravel
+            'filters' => $request->only(['sort', 'category', 'min_price', 'max_price']),
+            'categories' => Category::select('name')->distinct()->get()->pluck('name'),
         ]);
     }
 
