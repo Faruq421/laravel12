@@ -1,139 +1,60 @@
-# Perintah Refaktor: Arsitektur Layout Pelanggan
+Perintah untuk Gemini CLI: Perbaikan UI (Animasi Menu & Ikon Pencarian)
 
-**Tujuan:** Memisahkan layout admin (`AppLayout`) dari layout khusus pelanggan (`SiteLayout`) untuk menciptakan arsitektur frontend yang lebih bersih dan modular.
+Tujuan: Melakukan dua perbaikan polishing UI pada file SiteHeader.tsx untuk meningkatkan pengalaman visual.
 
----
+Tugas 1: Sesuaikan Animasi Menu Navigasi (Desktop)
 
-### Tugas 1: Buat Layout Pelanggan (`SiteLayout.tsx`)
+Target File: resources/js/components/layout/SiteHeader.tsx
 
-1.  **Buat File Baru:** `resources/js/layouts/SiteLayout.tsx`
-2.  **Isi File:** Gunakan kode di bawah ini. Layout ini akan menjadi pembungkus utama untuk semua halaman yang dilihat pelanggan, sudah termasuk Header, Footer, dan sistem notifikasi (`Toaster`).
+Masalah: Animasi menu "Produk & Jasa" saat ini terasa datang dari "atas kiri".
+Solusi: Kita akan secara eksplisit menentukan animasi agar hanya "geser dari atas" (slide-in-from-top) dan "fade-in".
 
-    ```tsx
-    import React from 'react';
-    import { usePage } from '@inertiajs/react';
-    import { type PageProps } from '@/types';
+Cari baris NavigationMenuContent di dalam NavigationMenuItem "Produk & Jasa".
 
-    // Impor Header & Footer dari lokasi komponen layout yang baru
-    import SiteHeader from '@/components/layout/SiteHeader';
-    import SiteFooter from '@/components/layout/SiteFooter';
+Cari (Sebelumnya):
 
-    // Impor Toaster/Sonner untuk notifikasi global
-    import { Toaster } from '@/components/ui/sonner';
+<NavigationMenuContent>
 
-    export default function SiteLayout({ children }: { children: React.ReactNode }) {
-        // Ambil 'auth' dari props global untuk diteruskan ke Header
-        const { auth } = usePage<PageProps>().props;
 
-        return (
-            <div className="flex min-h-screen flex-col">
-                {/* Header Situs menerima props 'auth' */}
-                <SiteHeader auth={auth} />
+Ganti Dengan: Tambahkan className baru untuk menimpa animasi default.
 
-                {/* 'children' adalah konten halaman spesifik (Welcome, MyOrders, etc.) */}
-                <main className="flex-1">
-                    {children}
-                </main>
+Ganti (Sesudahnya):
 
-                {/* Footer Situs */}
-                <SiteFooter />
+<NavigationMenuContent 
+    className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1"
+>
 
-                {/* Toaster untuk notifikasi di semua halaman */}
-                <Toaster richColors position="top-right" />
-            </div>
-        );
-    }
-    ```
 
----
+(Catatan: Ini memberi kita kontrol penuh atas animasi masuk dan keluar, menghilangkan efek "zoom" atau "geser horizontal" yang tidak diinginkan).
 
-### Tugas 2: Pindahkan & Sentralisasi Komponen Header
+Tugas 2: Perbaiki Perataan Ikon Pencarian (Search)
 
-1.  **Buat File Baru:** `resources/js/components/layout/SiteHeader.tsx`
-2.  **Pindahkan Kode:** Salin **seluruh isi** dari `resources/js/pages/welcome/partials/Header.tsx` ke dalam file `SiteHeader.tsx` yang baru.
-3.  **Hapus File Lama:** Hapus `resources/js/pages/welcome/partials/Header.tsx`.
+Target File: resources/js/components/layout/SiteHeader.tsx
 
----
+Masalah: Ikon Search tidak berada di tengah secara vertikal di dalam Input (terlihat terlalu rendah).
+Solusi: Kita akan mengganti metode positioning absolute top-1/2 dengan wrapper flexbox yang lebih stabil.
 
-### Tugas 3: Pindahkan & Sentralisasi Komponen Footer
+Cari blok div yang berisi Input pencarian dan ikon Search.
 
-1.  **Buat File Baru:** `resources/js/components/layout/SiteFooter.tsx`
-2.  **Pindahkan Kode:** Salin **seluruh isi** dari `resources/js/pages/welcome/partials/Footer.tsx` ke dalam file `SiteFooter.tsx` yang baru.
-3.  **Hapus File Lama:** Hapus `resources/js/pages/welcome/partials/Footer.tsx`.
+Cari (Sebelumnya):
 
----
+<div className="hidden md:block relative">
+    <Input type="search" placeholder="Cari produk..." className="pl-10 rounded-full" />
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+</div>
 
-### Tugas 4: Refaktor Halaman Utama (`Welcome.tsx`)
 
-1.  **Modifikasi File:** `resources/js/pages/Welcome.tsx`
-2.  **Terapkan Perubahan:**
-    *   Hapus `import Header` dan `import Footer` dari direktori `partials` yang lama.
-    *   Tambahkan `import SiteLayout from '@/layouts/SiteLayout';`.
-    *   Ubah struktur komponen untuk menggunakan `SiteLayout` sebagai pembungkus utama.
+Ganti Dengan: Kode baru ini menggunakan div wrapper absolute dengan flex items-center untuk memastikan perataan vertikal yang sempurna, dan pointer-events-none agar klik bisa tembus ke input.
 
-    **Sebelum:**
-    ```tsx
-    // ... (import lama)
-    export default function Welcome({ auth, ... }) {
-        return (
-            <>
-                <Header auth={auth} />
-                <HeroSection />
-                {/* ...konten lain... */}
-                <Footer />
-            </>
-        );
-    }
-    ```
+Ganti (Sesudahnya):
 
-    **Sesudah:**
-    ```tsx
-    import SiteLayout from '@/layouts/SiteLayout';
-    import { Head, usePage } from '@inertiajs/react';
-    // ... (import partials halaman lainnya)
+<div className="hidden md:block relative">
+    <Input type="search" placeholder="Cari produk..." className="pl-10 rounded-full" />
+    {/* Wrapper baru untuk perataan vertikal yang stabil */}
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <Search className="h-5 w-5 text-gray-400" />
+    </div>
+</div>
 
-    export default function Welcome() {
-        const { products } = usePage<{ products: any[] }>().props;
 
-        return (
-            <SiteLayout>
-                <Head title="Selamat Datang di Central Printing" />
-
-                {/* Render HANYA konten spesifik halaman ini */}
-                <HeroSection />
-                <FeaturesSection />
-                <CategoriesSection />
-                <CollectionSection products={products} />
-            </SiteLayout>
-        );
-    }
-    ```
-
----
-
-### Tugas 5: Migrasi Halaman Pesanan Saya (`MyOrdersPage.tsx`)
-
-1.  **Modifikasi File:** `resources/js/pages/Features/Order/MyOrdersPage.tsx`
-2.  **Terapkan Perubahan:**
-    *   Ganti `import AppLayout from '@/layouts/AppLayout';` dengan `import SiteLayout from '@/layouts/SiteLayout';`.
-    *   Ganti pembungkus `<AppLayout>` menjadi `<SiteLayout>`.
-
----
-
-### Tugas 6: Audit & Migrasi Halaman Pelanggan Lainnya
-
-Tinjau semua file di `resources/js/pages/` (kecuali yang ada di dalam direktori admin) untuk memastikan konsistensi.
-
-#### Halaman Wajib Migrasi:
-
-1.  **Halaman Detail Produk:**
-    *   **File:** `resources/js/pages/Features/Product/Show.tsx`
-    *   **Tindakan:** Ganti pemanggilan Header dan Footer manual dengan `SiteLayout` sebagai pembungkus utama, mengikuti pola pada Tugas 4 & 5.
-
-2.  **Halaman Autentikasi (jika relevan):**
-    *   **File:** `resources/js/pages/Auth/Login.tsx`, `Register.tsx`, `ForgotPassword.tsx`, dll.
-    *   **Tindakan:** Periksa apakah halaman ini menggunakan `Header` lama. Jika ya, migrasikan ke `SiteLayout`. Jika halaman ini seharusnya memiliki layout minimalis (tanpa navigasi utama), pastikan mereka menggunakan layout yang sesuai (misalnya `GuestLayout.tsx`) dan tidak memanggil `Header` atau `Footer` secara manual.
-
-#### Peringatan Penting:
-
-*   **Halaman Checkout:** **JANGAN** migrasi `resources/js/pages/Features/Checkout/Index.tsx`. Berdasarkan `GEMINI.md`, halaman ini sengaja menggunakan header minimalis yang berbeda untuk menjaga fokus pengguna. Biarkan konfigurasinya seperti semula.
+(Catutuan: Pastikan Input masih memiliki pl-10 agar teks tidak tumpang tindih dengan ikon).
