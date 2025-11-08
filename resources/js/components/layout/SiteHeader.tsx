@@ -44,9 +44,9 @@ import {
 import { cn } from "@/lib/utils";
 
 const productCategories = [
-    { title: 'Promosi & Marketing', icon: <Printer className="h-5 w-5 text-[#FF6500]" />, items: ['Digital Printing', 'Display Promotion', 'Large Format', 'Sticker', 'NameCard & Invitation'] },
-    { title: 'Produk & Merchandise', icon: <Gift className="h-5 w-5 text-[#FF6500]" />, items: ['Garment & Textile', 'Merchandise', 'Packaging', 'Home Decor & Photo'] },
-    { title: 'Kebutuhan Kantor', icon: <Briefcase className="h-5 w-5 text-[#FF6500]" />, items: ['Stationary', 'Kop Surat', 'Amplop', 'ID Card'] }
+    { title: 'Promosi & Marketing', icon: <Printer className="h-5 w-5 text-primary" />, items: ['Digital Printing', 'Display Promotion', 'Large Format', 'Sticker', 'NameCard & Invitation'] },
+    { title: 'Produk & Merchandise', icon: <Gift className="h-5 w-5 text-primary" />, items: ['Garment & Textile', 'Merchandise', 'Packaging', 'Home Decor & Photo'] },
+    { title: 'Kebutuhan Kantor', icon: <Briefcase className="h-5 w-5 text-primary" />, items: ['Stationary', 'Kop Surat', 'Amplop', 'ID Card'] }
 ];
 
 const ListItem = React.forwardRef<
@@ -90,13 +90,13 @@ export default function SiteHeader({ auth }: PageProps) {
             <div className={`bg-gray-100 text-gray-600 text-xs border-b transition-all duration-300 overflow-hidden ${isScrolled ? 'max-h-0 py-0 border-transparent' : 'max-h-12 py-2'}`}>
                 <div className="container mx-auto px-6 flex justify-between items-center">
                     <div className="flex items-center space-x-4">
-                        <a href="tel:08123456789" className="flex items-center hover:text-[#FF6500]"><Phone className="h-4 w-4 mr-1.5" /><span>0812-3456-7890</span></a>
-                        <a href="mailto:info@printshop.com" className="hidden sm:flex items-center hover:text-[#FF6500]"><Mail className="h-4 w-4 mr-1.5" /><span>info@printshop.com</span></a>
+                        <a href="tel:08123456789" className="flex items-center hover:text-primary"><Phone className="h-4 w-4 mr-1.5" /><span>0812-3456-7890</span></a>
+                        <a href="mailto:info@printshop.com" className="hidden sm:flex items-center hover:text-primary"><Mail className="h-4 w-4 mr-1.5" /><span>info@printshop.com</span></a>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <Link href="#" className="hover:text-[#FF6500]">Lacak Pesanan</Link>
+                        <Link href="#" className="hover:text-primary">Lacak Pesanan</Link>
                         <span className="text-gray-300">|</span>
-                        <Link href="#" className="hover:text-[#FF6500]">Bantuan</Link>
+                        <Link href="#" className="hover:text-primary">Bantuan</Link>
                     </div>
                 </div>
             </div>
@@ -107,13 +107,13 @@ export default function SiteHeader({ auth }: PageProps) {
                         <NavigationMenuList>
                             <NavigationMenuItem>
                                 <Link href="/" legacyBehavior passHref>
-                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-[#FF6500] text-base font-medium")}>
+                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
                                         Beranda
                                     </NavigationMenuLink>
                                 </Link>
                             </NavigationMenuItem>
                             <NavigationMenuItem>
-                                <NavigationMenuTrigger className="text-gray-700 hover:text-[#FF6500] bg-transparent hover:bg-gray-100 focus:bg-gray-100 data-[active]:bg-gray-100 data-[state=open]:bg-gray-100 text-base font-medium">
+                                <NavigationMenuTrigger className="text-gray-700 hover:text-primary bg-transparent hover:bg-gray-100 focus:bg-gray-100 data-[active]:bg-gray-100 data-[state=open]:bg-gray-100 text-base font-medium">
                                     Produk & Jasa
                                 </NavigationMenuTrigger>
                                 <NavigationMenuContent
@@ -129,7 +129,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                                 <ul className="space-y-3">
                                                     {category.items.map((item) => (
                                                         <li key={item}>
-                                                            <Link href={route('shop.index', { category: category.title })} className="text-gray-500 hover:text-[#FF6500] text-sm block transition-colors">
+                                                            <Link href={route('shop.index', { category: category.title })} className="text-gray-500 hover:text-primary text-sm block transition-colors">
                                                                 {item}
                                                             </Link>
                                                         </li>
@@ -139,7 +139,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                         ))}
                                     </div>
                                     <div className="border-t bg-gray-50 p-6 text-center">
-                                        <Link href={route('shop.index')} className="text-[#FF6500] font-semibold hover:underline">
+                                        <Link href={route('shop.index')} className="text-primary font-semibold hover:underline">
                                             Lihat Semua Produk &rarr;
                                         </Link>
                                     </div>
@@ -147,14 +147,14 @@ export default function SiteHeader({ auth }: PageProps) {
                             </NavigationMenuItem>
                             <NavigationMenuItem>
                                 <Link href="#" legacyBehavior passHref>
-                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-[#FF6500] text-base font-medium")}>
+                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
                                         Panduan Cetak
                                     </NavigationMenuLink>
                                 </Link>
                             </NavigationMenuItem>
                             <NavigationMenuItem>
                                 <Link href="#" legacyBehavior passHref>
-                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-[#FF6500] text-base font-medium")}>
+                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
                                         Portofolio
                                     </NavigationMenuLink>
                                 </Link>
@@ -174,7 +174,7 @@ export default function SiteHeader({ auth }: PageProps) {
 
                     <CartSheet />
 
-                    <Button asChild className="hidden lg:inline-flex bg-[#FF6500] hover:bg-[#C40C0C] text-white"><Link href="#">Minta Penawaran</Link></Button>
+                    <Button asChild className="hidden lg:inline-flex bg-primary hover:bg-primary/90 text-primary-foreground"><Link href="#">Minta Penawaran</Link></Button>
 
                     {user ? (
                         <DropdownMenu>
@@ -200,8 +200,8 @@ export default function SiteHeader({ auth }: PageProps) {
                         </DropdownMenu>
                     ) : (
                         <div className="hidden sm:flex items-center space-x-1">
-                            <Button asChild variant="ghost" className="text-gray-700 hover:text-[#FF6500]"><Link href={route('login')}>Log in</Link></Button>
-                            <Button asChild className="bg-[#C40C0C] hover:bg-[#a50a0a] text-white"><Link href={route('register')}>Register</Link></Button>
+                            <Button asChild variant="ghost" className="text-gray-700 hover:text-primary"><Link href={route('login')}>Log in</Link></Button>
+                            <Button asChild variant="destructive"><Link href={route('register')}>Register</Link></Button>
                         </div>
                     )}
                     
@@ -220,12 +220,12 @@ export default function SiteHeader({ auth }: PageProps) {
 
                             <div className="py-4 px-2 space-y-2">
                                 <DialogClose asChild>
-                                    <Link href="/" className="block py-3 px-3 rounded-md text-gray-700 hover:text-[#FF6500] hover:bg-gray-100 font-medium">Beranda</Link>
+                                    <Link href="/" className="block py-3 px-3 rounded-md text-gray-700 hover:text-primary hover:bg-gray-100 font-medium">Beranda</Link>
                                 </DialogClose>
 
                                 <Drawer>
                                     <DrawerTrigger asChild>
-                                        <button className="w-full flex justify-between items-center py-3 px-3 rounded-md text-gray-700 hover:text-[#FF6500] hover:bg-gray-100 font-medium">
+                                        <button className="w-full flex justify-between items-center py-3 px-3 rounded-md text-gray-700 hover:text-primary hover:bg-gray-100 font-medium">
                                             <span>Produk & Jasa</span>
                                             <ChevronDown className="h-4 w-4" />
                                         </button>
@@ -247,7 +247,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                                             <li key={item}>
                                                                 <DialogClose asChild>
                                                                     <DrawerClose asChild>
-                                                                        <Link href={route('shop.index', { category: category.title })} className="text-gray-600 hover:text-[#FF6500] text-sm block transition-colors">
+                                                                        <Link href={route('shop.index', { category: category.title })} className="text-gray-600 hover:text-primary text-sm block transition-colors">
                                                                             {item}
                                                                         </Link>
                                                                     </DrawerClose>
@@ -259,7 +259,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                             ))}
                                             <DialogClose asChild>
                                                 <DrawerClose asChild>
-                                                    <Link href={route('shop.index')} className="text-[#FF6500] font-semibold hover:underline text-base pl-2 mt-4 block">
+                                                    <Link href={route('shop.index')} className="text-primary font-semibold hover:underline text-base pl-2 mt-4 block">
                                                         Lihat Semua Produk &rarr;
                                                     </Link>
                                                 </DrawerClose>
@@ -274,22 +274,22 @@ export default function SiteHeader({ auth }: PageProps) {
                                 </Drawer>
 
                                 <DialogClose asChild>
-                                    <Link href="#" className="block py-3 px-3 rounded-md text-gray-700 hover:text-[#FF6500] hover:bg-gray-100 font-medium">Panduan Cetak</Link>
+                                    <Link href="#" className="block py-3 px-3 rounded-md text-gray-700 hover:text-primary hover:bg-gray-100 font-medium">Panduan Cetak</Link>
                                 </DialogClose>
                                 <DialogClose asChild>
-                                    <Link href="#" className="block py-3 px-3 rounded-md text-gray-700 hover:text-[#FF6500] hover:bg-gray-100 font-medium">Portofolio</Link>
+                                    <Link href="#" className="block py-3 px-3 rounded-md text-gray-700 hover:text-primary hover:bg-gray-100 font-medium">Portofolio</Link>
                                 </DialogClose>
 
                                 <div className="border-t pt-4 mt-4 space-y-3">
                                     <DialogClose asChild>
-                                        <Button asChild className="w-full bg-[#FF6500] hover:bg-[#C40C0C] text-white"><Link href="#">Minta Penawaran</Link></Button>
+                                        <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"><Link href="#">Minta Penawaran</Link></Button>
                                     </DialogClose>
                                     <div className="flex justify-between text-sm">
                                         <DialogClose asChild>
-                                            <Link href="#" className="text-gray-600 hover:text-[#FF6500]">Lacak Pesanan</Link>
+                                            <Link href="#" className="text-gray-600 hover:text-primary">Lacak Pesanan</Link>
                                         </DialogClose>
                                         <DialogClose asChild>
-                                            <Link href="#" className="text-gray-600 hover:text-[#FF6500]">Bantuan</Link>
+                                            <Link href="#" className="text-gray-600 hover:text-primary">Bantuan</Link>
                                         </DialogClose>
                                     </div>
                                 </div>
