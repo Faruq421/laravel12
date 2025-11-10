@@ -204,7 +204,7 @@ export default function SiteHeader({ auth }: PageProps) {
                             <Button asChild variant="destructive"><Link href={route('register')}>Register</Link></Button>
                         </div>
                     )}
-                    
+
                     <Dialog>
                         <DialogTrigger asChild>
                             <button className="lg:hidden">

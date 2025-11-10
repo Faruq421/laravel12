@@ -3,7 +3,7 @@ import { useState } from 'react';
 import SiteLayout from '@/Layouts/SiteLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import ProductQuickView from '@/components/ProductQuickView';
+import { ProductQuickView } from '@/components/ProductQuickView';
 import {
     Drawer,
     DrawerContent,
