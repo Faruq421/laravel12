@@ -1,8 +1,8 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import SiteLayout from '@/Layouts/SiteLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import {
     Drawer,
     DrawerContent,
@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/toggle-group';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatRupiah } from '@/lib/utils';
-import { List, LayoutGrid, Filter } from 'lucide-react';
+import { List, LayoutGrid, Filter, ShoppingCart } from 'lucide-react';
 
 // Komponen Filter dipisahkan agar lebih rapi
 const FilterContent = ({ localFilters, setLocalFilters, applyFilters, resetFilters, categories }) => (
@@ -78,7 +78,25 @@ const FilterContent = ({ localFilters, setLocalFilters, applyFilters, resetFilte
 );
 
 export default function ShopPage() {
-    const { products: paginatedProducts, filters, categories } = usePage().props as any;
+    const { products: paginatedProducts, filters, categories } = usePage().props as {
+        products: {
+            data: Array<{
+                id_produk: number;
+                slug: string;
+                gambar: string;
+                nama_produk: string;
+                harga: number;
+                category: { name: string };
+            }>;
+            meta: {
+                last_page: number;
+                links: Array<{ url: string; label: string; active: boolean }>;
+                total: number;
+            };
+        };
+        filters: { category: string; min_price: number; max_price: number; sort: string };
+        categories: string[];
+    };
 
     const [localFilters, setLocalFilters] = useState({
         category: filters.category || '',
@@ -88,6 +106,28 @@ export default function ShopPage() {
 
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [drawerOpen, setDrawerOpen] = useState(false);
+
+    const { post: addToCartPost, processing: isAddingToCart } = useForm({});
+
+    const handleAddToCart = (productId: number) => {
+        // Panggil fungsi post dari useForm
+        // Sesuaikan rute 'cart.store' jika nama rute Anda berbeda
+        addToCartPost(route('cart.store'), {
+            data: {
+                product_id: productId,
+                quantity: 1,
+                // Tambahkan data lain jika diperlukan (misal: varian)
+            },
+            preserveScroll: true,
+            onSuccess: () => {
+                // Opsional: Tampilkan notifikasi "Berhasil ditambah"
+                // (Anda mungkin perlu setup 'sonner' atau 'toast')
+            },
+            onError: () => {
+                // Opsional: Tampilkan notifikasi error
+            }
+        });
+    };
 
     const resetFilters = () => {
         router.get(route('shop.index'), {}, {
@@ -199,26 +239,43 @@ export default function ShopPage() {
                         {/* Products Grid/List */}
                         <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
                             {displayedProducts.map((product) => (
-                                <Card key={product.id_produk} className="overflow-hidden">
+                                <Card key={product.id_produk} className="overflow-hidden group transition-all duration-300 hover:shadow-xl">
                                     <CardContent className="p-0">
+                                        {/* AKSI 1: Tautan "Lihat Detail" (membungkus gambar & info) */}
                                         <Link href={route('products.show', product.slug)}>
                                             <ImageWithFallback
                                                 src={`/storage/${product.gambar}`}
                                                 alt={product.nama_produk}
-                                                className="w-full h-48 object-cover"
+                                                className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                                             />
+                                            <div className="p-4">
+                                                <p className="text-sm text-muted-foreground">{product.category.name}</p>
+                                                <h3 className="font-semibold truncate mt-1 text-foreground">
+                                                    {product.nama_produk}
+                                                </h3>
+                                                <p className="text-lg font-bold text-primary mt-2">
+                                                    {formatRupiah(product.harga)}
+                                                </p>
+                                            </div>
                                         </Link>
-                                        <div className="p-4">
-                                            <p className="text-sm text-muted-foreground">{product.category.name}</p>
-                                            <h3 className="font-semibold truncate mt-1">
-                                                <Link href={route('products.show', product.slug)}>{product.nama_produk}</Link>
-                                            </h3>
-                                            <p className="text-lg font-bold mt-2">{formatRupiah(product.harga)}</p>
-                                            <Button className="w-full mt-4" asChild>
-                                                <Link href={route('products.show', product.slug)}>Lihat Detail</Link>
-                                            </Button>
-                                        </div>
                                     </CardContent>
+
+                                    {/* AKSI 2: Tombol "Tambah ke Keranjang" (muncul saat hover) */}
+                                    {/* Ini berada di luar <CardContent> dan di luar <Link> */}
+                                    {/* --- PERUBAHAN DI BAWAH --- */}
+                                    <CardFooter
+                                        className="p-4 pt-0 overflow-hidden max-h-0 opacity-0 group-hover:max-h-40 group-hover:opacity-100 transition-all duration-300 ease-in-out"
+                                    >
+                                        <Button
+                                            className="w-full gap-2"
+                                            variant="default" // Ini akan otomatis menggunakan 'bg-primary'
+                                            onClick={() => handleAddToCart(product.id_produk)}
+                                            disabled={isAddingToCart} // Nonaktifkan saat proses post
+                                        >
+                                            <ShoppingCart className="h-4 w-4" />
+                                            {isAddingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang'}
+                                        </Button>
+                                    </CardFooter>
                                 </Card>
                             ))}
                         </div>
@@ -228,7 +285,7 @@ export default function ShopPage() {
                             {paginatedProducts?.meta?.last_page > 1 && (
                                 <Pagination>
                                     <PaginationContent>
-                                        {paginatedProducts.meta.links.map((link: any, index: number) => (
+                                        {paginatedProducts.meta.links.map((link: { url: string; label: string; active: boolean }, index: number) => (
                                             <PaginationItem key={index}>
                                                 <PaginationLink
                                                     href={link.url}
