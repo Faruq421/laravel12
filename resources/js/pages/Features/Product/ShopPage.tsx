@@ -1,8 +1,9 @@
-import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import SiteLayout from '@/Layouts/SiteLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import ProductQuickView from '@/components/ProductQuickView';
 import {
     Drawer,
     DrawerContent,
@@ -30,7 +31,7 @@ import {
 } from '@/components/ui/toggle-group';
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatRupiah } from '@/lib/utils';
-import { List, LayoutGrid, Filter, ShoppingCart } from 'lucide-react';
+import { List, LayoutGrid, Filter } from 'lucide-react';
 
 // Komponen Filter dipisahkan agar lebih rapi
 const FilterContent = ({ localFilters, setLocalFilters, applyFilters, resetFilters, categories }) => (
@@ -107,26 +108,17 @@ export default function ShopPage() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [drawerOpen, setDrawerOpen] = useState(false);
 
-    const { post: addToCartPost, processing: isAddingToCart } = useForm({});
+    const [isQuickViewOpen, setQuickViewOpen] = useState(false);
+    const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null);
 
-    const handleAddToCart = (productId: number) => {
-        // Panggil fungsi post dari useForm
-        // Sesuaikan rute 'cart.store' jika nama rute Anda berbeda
-        addToCartPost(route('cart.store'), {
-            data: {
-                product_id: productId,
-                quantity: 1,
-                // Tambahkan data lain jika diperlukan (misal: varian)
-            },
-            preserveScroll: true,
-            onSuccess: () => {
-                // Opsional: Tampilkan notifikasi "Berhasil ditambah"
-                // (Anda mungkin perlu setup 'sonner' atau 'toast')
-            },
-            onError: () => {
-                // Opsional: Tampilkan notifikasi error
-            }
-        });
+    const handleOpenQuickView = (slug: string) => {
+        setSelectedProductSlug(slug);
+        setQuickViewOpen(true);
+    };
+
+    const handleCloseQuickView = () => {
+        setQuickViewOpen(false);
+        setSelectedProductSlug(null);
     };
 
     const resetFilters = () => {
@@ -268,12 +260,10 @@ export default function ShopPage() {
                                     >
                                         <Button
                                             className="w-full gap-2"
-                                            variant="default" // Ini akan otomatis menggunakan 'bg-primary'
-                                            onClick={() => handleAddToCart(product.id_produk)}
-                                            disabled={isAddingToCart} // Nonaktifkan saat proses post
+                                            variant="default"
+                                            onClick={() => handleOpenQuickView(product.slug)}
                                         >
-                                            <ShoppingCart className="h-4 w-4" />
-                                            {isAddingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang'}
+                                            Pesan Sekarang
                                         </Button>
                                     </CardFooter>
                                 </Card>
@@ -302,6 +292,13 @@ export default function ShopPage() {
                     </main>
                 </div>
             </div>
+            {selectedProductSlug && (
+                <ProductQuickView
+                    slug={selectedProductSlug}
+                    isOpen={isQuickViewOpen}
+                    onClose={handleCloseQuickView}
+                />
+            )}
         </SiteLayout>
     );
 }

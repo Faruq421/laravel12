@@ -1,47 +1,47 @@
-Perintah untuk Gemini CLI: Refaktor Total Kartu Produk ShopPage
+Perintah untuk Gemini CLI: Refaktor Total Kartu Produk ShopPage (Logika Quick View)
 
-Tujuan: Mengimplementasikan desain kartu produk Figma yang modern, yang memisahkan tautan "Lihat Detail" dari tombol "Tambah ke Keranjang" yang muncul saat hover.
+Tujuan: Mengimplementasikan kartu produk yang memicu modal Quick View saat tombol "Pesan" di-klik, alih-alih langsung menambah ke keranjang.
 
 File Target: resources/js/Pages/Features/Product/ShopPage.tsx
 
 Tugas 1: Impor Fungsionalitas yang Diperlukan
 
-Di bagian atas file ShopPage.tsx, tambahkan impor untuk useForm (untuk menangani POST ke keranjang) dan ikon ShoppingCart:
+Di bagian atas file ShopPage.tsx, hapus useForm dan tambahkan useState. Kita juga perlu mengimpor komponen ProductQuickView Anda (saya berasumsi lokasinya berdasarkan changelog Anda).
 
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { ShoppingCart } from 'lucide-react'; // <-- TAMBAHKAN INI
+// GANTI 'useForm' dengan 'useState'
+import { Head, Link, router, usePage, useState } from '@inertiajs/react'; 
+import { ShoppingCart } from 'lucide-react'; 
+
+// TAMBAHKAN IMPOR UNTUK MODAL QUICK VIEW
+// (Asumsi lokasi file - sesuaikan jika perlu)
+import { ProductQuickView } from '@/components/ProductQuickView'; 
 
 
-Tugas 2: Definisikan Logika addToCart
+Tugas 2: Definisikan Logika QuickView
 
-Di dalam komponen ShopPage, tetapi DI LUAR return statement (di dekat tempat Anda mendefinisikan const { queryParams, ... }), definisikan hook useForm untuk menangani penambahan ke keranjang.
+Di dalam komponen ShopPage, hapus semua logika useForm (handleAddToCart, isAddingToCart). Ganti dengan state dan handler untuk mengelola modal Quick View.
 
 export default function ShopPage() {
     // ... props dan state Anda yang ada ...
     const { queryParams, ... } = useFilters();
 
-    // --- TAMBAHKAN LOGIKA INI ---
-    // 'data' di-set ke objek kosong, kita akan mengisinya di onClick
-    const { post: addToCartPost, processing: isAddingToCart } = useForm({});
+    // --- HAPUS LOGIKA useForm INI ---
+    // const { post: addToCartPost, processing: isAddingToCart } = useForm({});
+    // const handleAddToCart = (productId: number) => { ... };
+    // --- AKHIR LOGIKA YANG DIHAPUS ---
 
-    const handleAddToCart = (productId: number) => {
-        // Panggil fungsi post dari useForm
-        // Sesuaikan rute 'cart.store' jika nama rute Anda berbeda
-        addToCartPost(route('cart.store'), {
-            data: {
-                product_id: productId,
-                quantity: 1, 
-                // Tambahkan data lain jika diperlukan (misal: varian)
-            },
-            preserveScroll: true,
-            onSuccess: () => {
-                // Opsional: Tampilkan notifikasi "Berhasil ditambah"
-                // (Anda mungkin perlu setup 'sonner' atau 'toast')
-            },
-            onError: () => {
-                // Opsional: Tampilkan notifikasi error
-            }
-        });
+    // --- TAMBAHKAN LOGIKA STATE QUICK VIEW INI ---
+    const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+    const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null);
+
+    const handleOpenQuickView = (slug: string) => {
+        setSelectedProductSlug(slug);
+        setIsQuickViewOpen(true);
+    };
+
+    const handleCloseQuickView = () => {
+        setIsQuickViewOpen(false);
+        setSelectedProductSlug(null);
     };
     // --- AKHIR LOGIKA TAMBAHAN ---
 
@@ -54,48 +54,12 @@ export default function ShopPage() {
 
 Tugas 3: Rombak Total Struktur Kartu Produk di dalam .map()
 
-Temukan blok displayedProducts.map((product) => ( ... )) dan ganti seluruh kontennya dengan struktur baru ini.
-
-Penting:
-
-Tambahkan className="group" ke komponen <Card> induk.
-
-Bungkus ImageWithFallback DAN div className="p-4" dalam satu <Link>.
-
-Tambahkan <CardFooter> baru setelah div className="p-4" (di luar <Link>).
-
-Terapkan efek hover Figma ke <CardFooter>.
-
-Gunakan onClick pada <Button> baru.
+Ini sebagian besar sama, tetapi kita akan mengubah onClick dan teks tombol di <CardFooter>.
 
 Ganti Kode Lama (Versi CLI Anda):
+(Ini adalah kode dari INTRUKSI.md sebelumnya, Anda tidak perlu menghapus apa pun jika "Pekerja" belum menjalankannya)
 
-// --- HAPUS KODE LAMA INI ---
-<Card key={product.id_produk} className="overflow-hidden">
-    <CardContent className="p-0">
-        <Link href={route('products.show', product.slug)}>
-            <ImageWithFallback
-                src={`/storage/${product.gambar}`}
-                alt={product.nama_produk}
-                className="w-full h-48 object-cover"
-            />
-        </Link>
-        <div className="p-4">
-            <p className="text-sm text-muted-foreground">{product.category.name}</p>
-            <h3 className="font-semibold truncate mt-1">
-                <Link href={route('products.show', product.slug)}>{product.nama_produk}</Link>
-            </h3>
-            <p className="text-lg font-bold mt-2">{formatRupiah(product.harga)}</p>
-            <Button className="w-full mt-4" asChild>
-                <Link href={route('products.show', product.slug)}>Lihat Detail</Link>
-            </Button>
-        </div>
-    </CardContent>
-</Card>
-// --- AKHIR KODE LAMA ---
-
-
-Dengan Kode Baru (Struktur Figma + Logika Baru):
+Dengan Kode Baru (Struktur Figma + Logika Quick View):
 
 // --- GUNAKAN KODE BARU INI ---
 <Card key={product.id_produk} className="overflow-hidden group transition-all duration-300 hover:shadow-xl">
@@ -119,21 +83,41 @@ Dengan Kode Baru (Struktur Figma + Logika Baru):
         </Link>
     </CardContent>
 
-    {/* AKSI 2: Tombol "Tambah ke Keranjang" (muncul saat hover) */}
+    {/* AKSI 2: Tombol "Pesan Sekarang" (memicu Quick View) */}
     {/* Ini berada di luar <CardContent> dan di luar <Link> */}
-    {/* --- PERUBAHAN DI BAWAH --- */}
     <CardFooter 
         className="p-4 pt-0 overflow-hidden max-h-0 opacity-0 group-hover:max-h-40 group-hover:opacity-100 transition-all duration-300 ease-in-out"
     >
         <Button 
             className="w-full gap-2" 
             variant="default" // Ini akan otomatis menggunakan 'bg-primary'
-            onClick={() => handleAddToCart(product.id_produk)}
-            disabled={isAddingToCart} // Nonaktifkan saat proses post
+            // --- PERUBAHAN LOGIKA ONCLICK ---
+            onClick={() => handleOpenQuickView(product.slug)}
+            // --- HAPUS 'disabled' state ---
         >
             <ShoppingCart className="h-4 w-4" />
-            {isAddingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang'}
+            {/* --- PERUBAHAN TEKS TOMBOL --- */}
+            Pesan Sekarang
         </Button>
     </CardFooter>
 </Card>
 // --- AKHIR KODE BARU ---
+
+
+Tugas 4: Render Komponen Modal ProductQuickView
+
+Di dalam return utama ShopPage, tetapi di luar loop .map() (idealnya tepat sebelum </SiteLayout>), kita perlu me-render modal itu sendiri.
+
+    return (
+        <SiteLayout>
+            {/* ...semua kode halaman Anda (grid, filter, dll)... */}
+
+            {/* --- TAMBAHKAN RENDER MODAL INI DI BAWAH --- */}
+            <ProductQuickView
+                isOpen={isQuickViewOpen}
+                onClose={handleCloseQuickView}
+                productSlug={selectedProductSlug}
+            />
+        </SiteLayout>
+    );
+}
