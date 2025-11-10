@@ -264,7 +264,7 @@ export default function ShopPage() {
                                     {/* Ini berada di luar <CardContent> dan di luar <Link> */}
                                     {/* --- PERUBAHAN DI BAWAH --- */}
                                     <CardFooter
-                                        className="p-4 pt-0 overflow-hidden max-h-0 opacity-0 group-hover:max-h-40 group-hover:opacity-100 transition-all duration-300 ease-in-out"
+                                        className="p-4 pt-0 overflow-hidden max-h-0 opacity-0 group-hover:max-h-40 group-hover:opacity-500 transition-all duration-800 ease-in-out"
                                     >
                                         <Button
                                             className="w-full gap-2"
