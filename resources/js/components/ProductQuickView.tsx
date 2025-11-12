@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
@@ -8,16 +8,15 @@ import { useDropzone } from 'react-dropzone';
 // --- UI Components ---
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
-import { ShoppingCart, Plus, Minus, UploadCloud, X, CheckCircle2, Loader2, FileImage, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, UploadCloud, X, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 
 // --- Tipe Data ---
 interface ProductData {
@@ -142,10 +141,9 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const [selectedTemplate, setSelectedTemplate] = useState<DesignTemplate | null>(null);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [initialCartItemOptions, setInitialCartItemOptions] = useState<any>(null);
     const [existingDesign, setExistingDesign] = useState<{ value: string; original_filename: string } | null>(null);
 
-    const { data, setData, post, patch, processing, reset } = useForm({
+    const { setData, post, processing, reset, setData: setDataDirectly } = useForm({
         product_id: product?.id_produk,
         quantity: 1,
         variant: {} as Record<string, number>,
@@ -153,18 +151,17 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         note: "",
     });
 
-    const resetState = () => {
+    const resetState = useCallback(() => {
         reset();
         setQuantity(1);
         setSelectedOptions({});
         setNote("");
         setSelectedTemplate(null);
         setUploadedFile(null);
-        setInitialCartItemOptions(null);
         setExistingDesign(null);
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
-    };
+    }, [reset, previewUrl]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -175,12 +172,13 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         setIsLoading(true);
         const url = isEditMode ? `/api/cart/${cartItemId}` : `/api/products/${productSlug}`;
 
+        if (!productSlug && !isEditMode) return;
+
         axios.get(url)
             .then(response => {
                 if (isEditMode) {
                     const { product: productData, selectedOptions: itemOptions } = response.data;
                     setProduct(productData);
-                    setInitialCartItemOptions(itemOptions); // Simpan data awal
 
                     // Pre-populate state from cart item data
                     setQuantity(itemOptions.quantity || 1);
@@ -207,12 +205,12 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                 onClose();
             })
             .finally(() => setIsLoading(false));
-    }, [isOpen, productSlug, cartItemId]);
+    }, [isOpen, productSlug, cartItemId, isEditMode, onClose, resetState]);
 
     // --- Sinkronisasi State ke Form ---
-    useEffect(() => { setData('quantity', quantity) }, [quantity]);
-    useEffect(() => { setData('variant', selectedOptions) }, [selectedOptions]);
-    useEffect(() => { setData('note', note) }, [note]);
+    useEffect(() => { setData('quantity', quantity) }, [quantity, setData]);
+    useEffect(() => { setData('variant', selectedOptions) }, [selectedOptions, setData]);
+    useEffect(() => { setData('note', note) }, [note, setData]);
     useEffect(() => {
         if (selectedTemplate) {
             setData('design', { type: 'template', value: selectedTemplate.id });
@@ -224,10 +222,10 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         else {
             setData('design', null);
         }
-    }, [selectedTemplate, uploadedFile, existingDesign]);
+    }, [selectedTemplate, uploadedFile, existingDesign, setData]);
      useEffect(() => {
         if (product) setData('product_id', product.id_produk);
-    }, [product]);
+    }, [product, setData]);
 
 
     // --- Logika Atribut & Harga ---
@@ -321,7 +319,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         if (!cartItemId || !product) return;
 
         // Manually set processing to true
-        setData('processing', true);
+        setDataDirectly('processing', true);
 
         const formData = new FormData();
         formData.append('product_id', product.id_produk.toString());
@@ -362,13 +360,17 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
             toast.error('Gagal memperbarui keranjang.');
         }).finally(() => {
             // Manually set processing to false
-            setData('processing', false);
+            setDataDirectly('processing', false);
         });
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                 <DialogHeader className="sr-only">
+                    <DialogTitle>Detail Cepat Produk</DialogTitle>
+                    <DialogDescription>Tampilan detail cepat untuk melihat dan mengkonfigurasi produk sebelum ditambahkan ke keranjang.</DialogDescription>
+                </DialogHeader>
                 {isLoading && (
                     <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-lg">
                         <Loader2 className="h-12 w-12 animate-spin text-orange-500" />
@@ -377,7 +379,12 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                 {product && (
                     <>
                         <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold">{product.nama_produk}</DialogTitle>
+                            {/* Visually hidden title and description for accessibility */}
+                            <DialogTitle className="sr-only">{product.nama_produk}</DialogTitle>
+                            <DialogDescription className="sr-only">
+                                Detail produk dan opsi untuk {product.nama_produk}. Ubah varian, jumlah, dan tambahkan desain kustom sebelum memasukkan ke keranjang.
+                            </DialogDescription>
+                            <h2 className="text-2xl font-bold">{product.nama_produk}</h2>
                         </DialogHeader>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
                             {/* Kolom Kiri: Galeri */}

@@ -294,7 +294,7 @@ export default function ShopPage() {
             </div>
             {selectedProductSlug && (
                 <ProductQuickView
-                    slug={selectedProductSlug}
+                    productSlug={selectedProductSlug}
                     isOpen={isQuickViewOpen}
                     onClose={handleCloseQuickView}
                 />
