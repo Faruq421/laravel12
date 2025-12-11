@@ -143,11 +143,12 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [existingDesign, setExistingDesign] = useState<{ value: string; original_filename: string } | null>(null);
 
-    const { setData, post, processing, reset, setData: setDataDirectly } = useForm({
+    const { data, setData, post, processing, reset } = useForm({
         product_id: product?.id_produk,
         quantity: 1,
         variant: {} as Record<string, number>,
-        design: null as { type: 'template' | 'upload', value: number | File | string | null, original_filename?: string } | null,
+        // Tipe 'design' disederhanakan agar cocok dengan ProductShowPage
+        design: null as { type: 'template' | 'upload', value: number | File | null } | null,
         note: "",
     });
 
@@ -216,13 +217,11 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
             setData('design', { type: 'template', value: selectedTemplate.id });
         } else if (uploadedFile) {
             setData('design', { type: 'upload', value: uploadedFile });
-        } else if (existingDesign) {
-            setData('design', { ...existingDesign, type: 'upload' });
-        }
-        else {
+        // 'existingDesign' akan ditangani saat memuat data, bukan di sini
+        } else if (!isEditMode) { // Hanya reset jika BUKAN mode edit
             setData('design', null);
         }
-    }, [selectedTemplate, uploadedFile, existingDesign, setData]);
+    }, [selectedTemplate, uploadedFile, setData, isEditMode]);
      useEffect(() => {
         if (product) setData('product_id', product.id_produk);
     }, [product, setData]);
@@ -305,62 +304,46 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
 
     const handleAddToCart = () => {
         if (!product) return;
+
+        // Gunakan 'post' standar dari useForm.
+        // 'data' sudah disinkronkan oleh useEffect.
         post(route('cart.store'), {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success(`${product.nama_produk} berhasil ditambahkan.`);
-                onClose();
+                onClose(); // Tutup modal setelah berhasil
             },
-            onError: () => toast.error('Gagal menambahkan produk.'),
+            onError: (errors) => {
+                console.error("Cart Add Error:", errors);
+                toast.error('Gagal menambahkan produk, periksa kembali pilihan Anda.');
+            },
         });
     };
 
     const handleUpdateCart = () => {
         if (!cartItemId || !product) return;
 
-        // Manually set processing to true
-        setDataDirectly('processing', true);
+        // Siapkan data untuk dikirim.
+        // 'data' (dari useForm) sudah berisi semua state terbaru.
+        const formData = {
+            ...data,
+            _method: 'PATCH' // <-- Method spoofing untuk Laravel
+        };
 
-        const formData = new FormData();
-        formData.append('product_id', product.id_produk.toString());
-        formData.append('quantity', quantity.toString());
-        formData.append('note', note);
-        formData.append('_method', 'PATCH'); // Method Spoofing for Laravel
-
-        Object.entries(selectedOptions).forEach(([key, value]) => {
-            formData.append(`variant[${key}]`, value.toString());
-        });
-
-        const currentDesign = data.design;
-        if (currentDesign) {
-            formData.append('design[type]', currentDesign.type);
-            if (currentDesign.type === 'upload') {
-                if (currentDesign.value instanceof File) {
-                    formData.append('design[value]', currentDesign.value);
-                } else if (typeof currentDesign.value === 'string') {
-                    formData.append('design[value]', currentDesign.value);
-                    if (currentDesign.original_filename) {
-                        formData.append('design[original_filename]', currentDesign.original_filename);
-                    }
-                }
-            } else if (currentDesign.type === 'template') {
-                formData.append('design[value]', currentDesign.value?.toString() ?? '');
-            }
-        }
-
-        axios.post(route('cart.update', { cartItemId }), formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        }).then(() => {
-            toast.success('Keranjang berhasil diperbarui.');
-            // Manually reload the page to see changes, as we are bypassing Inertia's auto-refresh
-            window.location.reload();
-            onClose();
-        }).catch((error) => {
-            console.error("Update Error:", error.response?.data?.errors);
-            toast.error('Gagal memperbarui keranjang.');
-        }).finally(() => {
-            // Manually set processing to false
-            setDataDirectly('processing', false);
+        // Gunakan 'post' Inertia untuk update.
+        // Inertia akan otomatis menangani file upload.
+        post(route('cart.update', { cartItemId }), {
+            data: formData, // Kirim data yang sudah disiapkan
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Keranjang berhasil diperbarui.');
+                onClose(); // Tutup modal setelah berhasil
+                // Tidak perlu reload manual, Inertia akan mengurusnya
+            },
+            onError: (errors) => {
+                console.error("Cart Update Error:", errors);
+                toast.error('Gagal memperbarui keranjang.');
+            },
         });
     };
 

@@ -33,14 +33,51 @@ class Product extends Model
     protected static function booted(): void
     {
         static::creating(function (Product $product) {
-            $product->slug = Str::slug($product->nama_produk);
+            $product->slug = static::generateUniqueSlug($product->nama_produk);
         });
 
         static::updating(function (Product $product) {
             if ($product->isDirty('nama_produk')) {
-                $product->slug = Str::slug($product->nama_produk);
+                $product->slug = static::generateUniqueSlug($product->nama_produk, $product->id_produk);
             }
         });
+    }
+
+    /**
+     * Generate a unique slug for the product.
+     * If the slug already exists, append a numeric suffix (-1, -2, etc.)
+     *
+     * @param string $name
+     * @param int|null $excludeId Product ID to exclude when checking (for updates)
+     * @return string
+     */
+    protected static function generateUniqueSlug(string $name, ?int $excludeId = null): string
+    {
+        $slug = Str::slug($name);
+        $originalSlug = $slug;
+        $counter = 1;
+
+        // Query to check for existing slugs
+        $query = static::where('slug', $slug);
+
+        // Exclude the current product when updating
+        if ($excludeId !== null) {
+            $query->where('id_produk', '!=', $excludeId);
+        }
+
+        // Keep incrementing the counter until we find a unique slug
+        while ($query->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+
+            // Reset query for the new slug
+            $query = static::where('slug', $slug);
+            if ($excludeId !== null) {
+                $query->where('id_produk', '!=', $excludeId);
+            }
+        }
+
+        return $slug;
     }
 
     /**
