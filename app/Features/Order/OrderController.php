@@ -54,6 +54,19 @@ class OrderController extends Controller
         ]);
     }
 
+    // Shipping methods available for checkout
+    const SHIPPING_METHODS = [
+        ['id' => 'jne', 'name' => 'JNE Reguler', 'price' => 15000, 'eta' => '2-3 Hari'],
+        ['id' => 'sicepat', 'name' => 'SiCepat BEST', 'price' => 27000, 'eta' => '1 Hari'],
+        ['id' => 'gosend', 'name' => 'GoSend Instant', 'price' => 45000, 'eta' => 'Jam ini'],
+    ];
+
+    // Payment methods available for checkout
+    const PAYMENT_METHODS = [
+        ['id' => 'bca', 'name' => 'Transfer Bank BCA', 'description' => 'Cek otomatis'],
+        ['id' => 'credit_card', 'name' => 'Kartu Kredit', 'description' => 'Visa / MasterCard'],
+    ];
+
     /**
      * Show the checkout page for the customer.
      */
@@ -69,12 +82,12 @@ class OrderController extends Controller
 
         // Jika tidak ada item yang dipilih secara eksplisit, anggap semua item dipilih
         if (empty($selectedItemIds)) {
-            $itemsForCheckout = $allCartItems;
+            $itemsForCheckout = array_values($allCartItems);
         } else {
             // Filter keranjang berdasarkan item yang dipilih
-            $itemsForCheckout = array_filter($allCartItems, function ($item) use ($selectedItemIds) {
+            $itemsForCheckout = array_values(array_filter($allCartItems, function ($item) use ($selectedItemIds) {
                 return in_array($item['id'], $selectedItemIds);
-            });
+            }));
         }
 
         if (empty($itemsForCheckout)) {
@@ -82,8 +95,16 @@ class OrderController extends Controller
             return redirect()->back()->withErrors(['cart' => 'Anda harus memilih setidaknya satu item untuk checkout.']);
         }
 
-        return Inertia::render('Features/Order/Checkout', [
-            'cartItems' => array_values($itemsForCheckout),
+        // Calculate subtotal from items
+        $subtotal = array_reduce($itemsForCheckout, function ($carry, $item) {
+            return $carry + ($item['price'] * $item['quantity']);
+        }, 0);
+
+        return Inertia::render('Features/Checkout/Index', [
+            'cartItems' => $itemsForCheckout,
+            'subtotal' => $subtotal,
+            'shippingMethods' => self::SHIPPING_METHODS,
+            'paymentMethods' => self::PAYMENT_METHODS,
         ]);
     }
 
@@ -98,6 +119,8 @@ class OrderController extends Controller
             'shipping_address.city' => 'required|string|max:100',
             'shipping_address.postal_code' => 'required|string|max:10',
             'shipping_address.phone' => 'required|string|max:20',
+            'shipping_method' => 'required|string|in:jne,sicepat,gosend',
+            'payment_method' => 'required|string|in:bca,credit_card',
             'selected_items' => 'required|array|min:1',
             'selected_items.*' => 'string', // Array of selected cart item IDs
         ]);
@@ -119,48 +142,73 @@ class OrderController extends Controller
         $productsById = Product::whereIn('id_produk', $productIds)->get()->keyBy('id_produk');
 
         // 3. Hitung total harga berdasarkan data dari database
-        $totalAmount = 0;
+        $subtotal = 0;
         foreach ($itemsToProcess as $item) {
             $product = $productsById->get($item['product_id']);
             if ($product) {
-                // Note: Anda mungkin perlu menambahkan logika harga varian di sini jika ada
-                $totalAmount += $product->harga * $item['quantity'];
+                // Use item price from cart (which includes variant modifiers)
+                $subtotal += $item['price'] * $item['quantity'];
             }
         }
 
+        // 4. Get shipping cost based on selected method
+        $shippingMethodData = collect(self::SHIPPING_METHODS)->firstWhere('id', $validated['shipping_method']);
+        $shippingCost = $shippingMethodData ? $shippingMethodData['price'] : 0;
+
+        // 5. Calculate tax (11%)
+        $tax = $subtotal * 0.11;
+
+        // 6. Calculate total
+        $totalPrice = $subtotal + $shippingCost + $tax;
+
         $order = null;
         try {
-            DB::transaction(function () use ($validated, $itemsToProcess, $totalAmount, $productsById, &$order) {
-                // 4. Buat entri di tabel 'orders'
+            DB::transaction(function () use ($validated, $itemsToProcess, $totalPrice, $shippingCost, $productsById, &$order) {
+                // Create order entry
                 $order = Order::create([
                     'user_id' => auth()->id(),
-                    'order_number' => 'ORD-' . strtoupper(uniqid()),
-                    'total_amount' => $totalAmount,
-                    'order_status' => 'pending', // Status awal
+                    'order_status' => 'pending',
+                    'total_price' => $totalPrice,
                     'shipping_address' => $validated['shipping_address'],
+                    'shipping_cost' => $shippingCost,
+                    'shipping_method' => $validated['shipping_method'],
+                    'payment_method' => $validated['payment_method'],
+                    'payment_status' => 'unpaid',
                 ]);
 
-                // 5. Pindahkan item dari keranjang ke 'order_items'
+                // Create order items
                 foreach ($itemsToProcess as $item) {
                     $product = $productsById->get($item['product_id']);
                     if ($product) {
                         $order->items()->create([
-                            'product_id' => $item['product_id'],
+                            'product_id_produk' => $item['product_id'],
                             'quantity' => $item['quantity'],
-                            'price' => $product->harga, // Harga saat checkout
-                            // Anda bisa menambahkan detail lain seperti varian di sini
+                            'price' => $item['price'], // Price from cart (includes variant modifier)
+                            'options' => [
+                                'variant' => $item['variant'] ?? null,
+                                'design' => $item['design'] ?? null,
+                            ],
                         ]);
                     }
                 }
             });
 
-            // 6. Hapus item yang sudah di-checkout dari sesi keranjang
+            // 7. Remove checked out items from cart session
             $remainingCartItems = array_filter($allCartItems, function ($item) use ($selectedItemIds) {
                 return !in_array($item['id'], $selectedItemIds);
             });
-            session(['cart.items' => $remainingCartItems]);
 
-            // 7. Redirect ke halaman sukses atau detail pesanan
+            // Recalculate cart subtotal
+            $newSubtotal = array_reduce($remainingCartItems, function ($carry, $item) {
+                return $carry + ($item['price'] * $item['quantity']);
+            }, 0);
+
+            session(['cart' => [
+                'items' => $remainingCartItems,
+                'subtotal' => $newSubtotal,
+            ]]);
+
+            // 8. Redirect to order detail/success page
             return redirect()->route('orders.show', $order)->with('message', 'Pesanan Anda berhasil dibuat!');
 
         } catch (\Exception $e) {
