@@ -24,7 +24,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion"
 import {
     ToggleGroup,
     ToggleGroupItem,
@@ -32,47 +37,78 @@ import {
 import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { formatRupiah } from '@/lib/utils';
 import { List, LayoutGrid, Filter } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 // Komponen Filter dipisahkan agar lebih rapi
 const FilterContent = ({ localFilters, setLocalFilters, applyFilters, resetFilters, categories }) => (
-    <div className="p-4 space-y-6">
-        <div>
-            <h3 className="font-semibold mb-2">Kategori</h3>
-            <div className="space-y-2">
-                <Button
-                    variant={localFilters.category === '' ? 'secondary' : 'ghost'}
-                    className="w-full justify-start"
-                    onClick={() => setLocalFilters(prev => ({ ...prev, category: '' }))}
-                >
-                    Semua Kategori
-                </Button>
-                {categories.map((category, index) => (
-                    <Button
-                        key={index}
-                        variant={localFilters.category === category ? 'secondary' : 'ghost'}
-                        className="w-full justify-start"
-                        onClick={() => setLocalFilters(prev => ({ ...prev, category: category }))}
-                    >
-                        {category}
-                    </Button>
-                ))}
-            </div>
-        </div>
-        <div>
-            <h3 className="font-semibold mb-2">Rentang Harga</h3>
-            <Slider
-                value={localFilters.priceRange}
-                onValueChange={(val) => setLocalFilters(prev => ({ ...prev, priceRange: val }))}
-                max={1000000}
-                step={50000}
-            />
-            <div className="flex justify-between text-sm mt-2">
-                <span>{formatRupiah(localFilters.priceRange[0])}</span>
-                <span>{formatRupiah(localFilters.priceRange[1])}</span>
-            </div>
-        </div>
-        <div className="flex gap-2">
-            <Button onClick={applyFilters} className="flex-1">Terapkan Filter</Button>
+    <div className="space-y-6">
+        <Accordion type="multiple" defaultValue={['category', 'price']} className="w-full">
+            <AccordionItem value="category" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline py-2">Kategori</AccordionTrigger>
+                <AccordionContent>
+                    <div className="space-y-1 pt-1">
+                        <Button
+                            variant={localFilters.category === '' ? 'secondary' : 'ghost'}
+                            className="w-full justify-start h-8 font-normal"
+                            onClick={() => setLocalFilters(prev => ({ ...prev, category: '' }))}
+                        >
+                            Semua Kategori
+                        </Button>
+                        {categories.map((category, index) => (
+                            <Button
+                                key={index}
+                                variant={localFilters.category === category ? 'secondary' : 'ghost'}
+                                className="w-full justify-start h-8 font-normal"
+                                onClick={() => setLocalFilters(prev => ({ ...prev, category: category }))}
+                            >
+                                {category}
+                            </Button>
+                        ))}
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="price" className="border-b-0">
+                <AccordionTrigger className="hover:no-underline py-2">Rentang Harga</AccordionTrigger>
+                <AccordionContent>
+                    <div className="pt-2 px-1">
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <span className="absolute left-2.5 top-2.5 text-xs text-muted-foreground">Rp</span>
+                                <Input
+                                    type="number"
+                                    placeholder="Min"
+                                    className="pl-8 h-9 text-sm"
+                                    value={localFilters.priceRange[0]}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setLocalFilters(prev => ({ ...prev, priceRange: [val, prev.priceRange[1]] }));
+                                    }}
+                                />
+                            </div>
+                            <span className="text-muted-foreground bg-transparent">-</span>
+                            <div className="relative flex-1">
+                                <span className="absolute left-2.5 top-2.5 text-xs text-muted-foreground">Rp</span>
+                                <Input
+                                    type="number"
+                                    placeholder="Max"
+                                    className="pl-8 h-9 text-sm"
+                                    value={localFilters.priceRange[1]}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setLocalFilters(prev => ({ ...prev, priceRange: [prev.priceRange[0], val] }));
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+
+        <div className="flex gap-2 pt-2 border-t">
+            <Button onClick={applyFilters} className="flex-1">Terapkan</Button>
             <Button onClick={resetFilters} variant="outline" className="flex-1">Reset</Button>
         </div>
     </div>
