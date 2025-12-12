@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Link } from '@inertiajs/react';
 import { ShoppingCart } from 'lucide-react';
+import { ImageWithFallback } from '@/components/ImageWithFallback';
 import { ProductQuickView } from '@/components/ProductQuickView'; // Import komponen modal
 
 // Tipe data untuk satu produk
@@ -52,33 +53,37 @@ export default function CollectionSection({ isInView, products }: CollectionSect
                 <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                     {products && products.length > 0 ? (
                         products.map((product) => (
-                            <Card key={product.id_produk} className="text-left rounded-lg overflow-hidden group flex flex-col transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
-                                <Link href={route('products.show', product.slug)} className="flex-grow">
-                                    <div className="relative overflow-hidden">
-                                        <img
+                            <Card key={product.id_produk} className="overflow-hidden group transition-all duration-300 hover:shadow-xl text-left">
+                                <CardContent className="p-0">
+                                    <Link href={route('products.show', product.slug)}>
+                                        <ImageWithFallback
                                             src={product.gambar_url}
                                             alt={product.nama_produk}
-                                            className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
+                                            className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
                                         />
-                                    </div>
-                                    <CardContent className="p-5 bg-white">
-                                        <p className="text-sm text-gray-500">{product.category?.name || 'Uncategorized'}</p>
-                                        <h3 className="font-semibold text-lg mt-1 text-gray-800 group-hover:text-[#FF6500] transition-colors">
-                                            {product.nama_produk}
-                                        </h3>
-                                    </CardContent>
-                                </Link>
-                                <div className="p-5 bg-white border-t border-gray-100 flex justify-between items-center">
-                                    <p className="font-bold text-xl text-gray-900">Rp {(product.harga || 0).toLocaleString('id-ID')}</p>
-                                    {/* Tombol diubah untuk membuka Quick View */}
+                                        <div className="p-4">
+                                            <p className="text-sm text-muted-foreground text-gray-500">{product.category?.name || 'Uncategorized'}</p>
+                                            <h3 className="font-semibold truncate mt-1 text-foreground text-gray-900 group-hover:text-[#FF6500] transition-colors">
+                                                {product.nama_produk}
+                                            </h3>
+                                            <p className="text-lg font-bold text-primary text-[#FF6500] mt-2">
+                                                Rp {(product.harga || 0).toLocaleString('id-ID')}
+                                            </p>
+                                        </div>
+                                    </Link>
+                                </CardContent>
+                                <CardFooter
+                                    className="p-4 pt-0 overflow-hidden max-h-0 opacity-0 group-hover:max-h-40 group-hover:opacity-100 transition-all duration-500 ease-in-out"
+                                >
                                     <Button
-                                        size="icon"
-                                        className="bg-[#FF6500] hover:bg-[#C40C0C] text-white shadow-md"
+                                        className="w-full gap-2 bg-[#FF6500] hover:bg-[#C40C0C] text-white"
+                                        variant="default"
                                         onClick={() => handleOpenQuickView(product.slug)}
                                     >
-                                        <ShoppingCart className="h-5 w-5" />
+                                        <ShoppingCart className="h-4 w-4" />
+                                        Pesan Sekarang
                                     </Button>
-                                </div>
+                                </CardFooter>
                             </Card>
                         ))
                     ) : (
