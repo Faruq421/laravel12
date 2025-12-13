@@ -240,10 +240,36 @@ class OrderController extends Controller
 
         $order->load('user', 'items.product');
 
-        // Resolve design template paths for each order item
-        $order->items->transform(function ($item) {
-            if ($item->options && isset($item->options['design'])) {
-                $design = $item->options['design'];
+        // Pre-fetch all attributes and attribute values for efficiency
+        $allAttributes = \App\Features\Product\Attribute::all()->keyBy('id');
+        $allAttributeValues = \App\Features\Product\AttributeValue::all()->keyBy('id');
+
+        // Resolve design template paths and variant names for each order item
+        $order->items->transform(function ($item) use ($allAttributes, $allAttributeValues) {
+            $options = $item->options ?? [];
+
+            // Resolve variant IDs to names
+            if (isset($options['variant']) && is_array($options['variant'])) {
+                $resolvedVariants = [];
+
+                foreach ($options['variant'] as $attributeId => $valueId) {
+                    // Get attribute name
+                    $attribute = $allAttributes->get($attributeId);
+                    $attributeName = $attribute ? $attribute->name : "Attribute #$attributeId";
+
+                    // Get attribute value name
+                    $attributeValue = $allAttributeValues->get($valueId);
+                    $valueName = $attributeValue ? $attributeValue->value : "Value #$valueId";
+
+                    $resolvedVariants[$attributeName] = $valueName;
+                }
+
+                $options['variant'] = $resolvedVariants;
+            }
+
+            // Resolve design template paths
+            if (isset($options['design'])) {
+                $design = $options['design'];
 
                 // If design type is template and value is an ID (numeric), look up the template
                 if (
@@ -255,14 +281,12 @@ class OrderController extends Controller
                     $template = \App\Features\DesignTemplate\DesignTemplate::find($design['value']);
                     if ($template) {
                         // Update the options with resolved template data
-                        $options = $item->options;
                         $options['design'] = [
                             'type' => 'template',
                             'value' => $template->file_path ?? $template->thumbnail_path,
                             'original_filename' => $template->name,
                             'template_id' => $design['value'],
                         ];
-                        $item->options = $options;
                     }
                 }
 
@@ -273,12 +297,11 @@ class OrderController extends Controller
                     isset($design['value'])
                 ) {
                     // Ensure value is a string
-                    $options = $item->options;
                     $options['design']['value'] = (string) $design['value'];
-                    $item->options = $options;
                 }
             }
 
+            $item->options = $options;
             return $item;
         });
 
