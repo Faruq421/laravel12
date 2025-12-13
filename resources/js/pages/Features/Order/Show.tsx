@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import SiteLayout from '@/layouts/SiteLayout';
 import { PageProps, BreadcrumbItem } from '@/types';
 import { route } from 'ziggy-js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,8 +83,21 @@ export default function Show({ order }: PageProps<{ order: Order }>) {
         return valueStr;
     };
 
+    const { auth } = usePage<PageProps>().props;
+    const isAdmin = auth.user?.role === 'admin';
+
+    const CustomerLayout = ({ children }: { children: React.ReactNode; breadcrumbs?: any }) => (
+        <SiteLayout>
+            <div className="container mx-auto py-8">
+                {children}
+            </div>
+        </SiteLayout>
+    );
+
+    const Layout = isAdmin ? AppLayout : CustomerLayout;
+
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <Layout breadcrumbs={breadcrumbs}>
             <Head title={`Order #${order.id}`} />
 
             <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -459,6 +473,6 @@ export default function Show({ order }: PageProps<{ order: Order }>) {
                     )}
                 </DialogContent>
             </Dialog>
-        </AppLayout>
+        </Layout>
     );
 }
