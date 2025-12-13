@@ -14,146 +14,23 @@ import {
 import {
     Package, Truck, CreditCard, User, MapPin,
     Download, FileIcon, ChevronLeft, Calendar,
-    Mail, Phone, ExternalLink, Eye, Info
+    Mail, Phone, Info, Eye, Clock, CheckCircle, XCircle
 } from 'lucide-react';
 import { Order, OrderStatus, PaymentStatus, OrderItem } from './types';
 
-// NOTE: Using DUMMY DATA for initial design review as requested
-const DUMMY_ORDER: Order = {
-    id: 1024,
-    user_id: 1,
-    order_status: 'processing',
-    payment_status: 'paid',
-    payment_method: 'credit_card',
-    shipping_method: 'jne',
-    shipping_cost: 15000,
-    total_price: 450000,
-    tracking_number: null,
-    estimated_completion_date: null,
-    admin_notes: null,
-    created_at: '2024-10-20T10:30:00.000000Z',
-    updated_at: '2024-10-20T10:30:00.000000Z',
-    shipping_address: {
-        name: 'John Doe',
-        phone: '081234567890',
-        address: 'Jl. Sudirman No. 123, Jakarta Selatan',
-        city: 'Jakarta',
-        postal_code: '12190'
-    },
-    user: {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@example.com',
-        email_verified_at: '2024-01-01T00:00:00.000000Z',
-        role: 'customer',
-        created_at: '2024-01-01T00:00:00.000000Z',
-        updated_at: '2024-01-01T00:00:00.000000Z',
-    },
-    items: [
-        {
-            id: 1,
-            order_id: 1024,
-            product_id: 1,
-            quantity: 2,
-            price: 150000,
-            created_at: '2024-10-20T10:30:00.000000Z',
-            updated_at: '2024-10-20T10:30:00.000000Z',
-            product: {
-                id_produk: 1,
-                nama_produk: 'Kaos Polos Premium',
-                slug: 'kaos-polos-premium',
-                harga: 150000,
-                deskripsi: 'Kaos kualitas terbaik, bahan combed 30s sejuk dan nyaman dipakai.',
-                stok: 100,
-                category_id: 1,
-                gambar: 'tshirt-black.jpg',
-                gambar_url: '/storage/products/tshirt-black.jpg',
-                status: true,
-                allow_custom_design: true,
-                enable_design_feature: true,
-                created_at: '2024-01-01',
-                updated_at: '2024-01-01',
-            },
-            options: {
-                variant: {
-                    Size: 'L',
-                    Color: 'Black'
-                },
-                design: {
-                    type: 'upload',
-                    value: 'https://placehold.co/300x300/png?text=User+Upload+Logo',
-                    original_filename: 'logo-perusahaan-final.png'
-                }
-            }
-        },
-        {
-            id: 2,
-            order_id: 1024,
-            product_id: 2,
-            quantity: 1,
-            price: 135000,
-            created_at: '2024-10-20T10:30:00.000000Z',
-            updated_at: '2024-10-20T10:30:00.000000Z',
-            product: {
-                id_produk: 2,
-                nama_produk: 'Topi Snapback Custom',
-                slug: 'topi-snapback-custom',
-                harga: 135000,
-                deskripsi: 'Topi snapback dengan adjustable strap, cocok untuk gaya casual.',
-                stok: 50,
-                category_id: 2,
-                gambar: 'cap.jpg',
-                gambar_url: '/storage/products/cap.jpg',
-                status: true,
-                allow_custom_design: true,
-                enable_design_feature: true,
-                created_at: '2024-01-01',
-                updated_at: '2024-01-01',
-            },
-            options: {
-                variant: {
-                    Color: 'Red'
-                },
-                design: null
-            }
-        },
-        {
-            id: 3,
-            order_id: 1024,
-            product_id: 3,
-            quantity: 5,
-            price: 200000,
-            created_at: '2024-10-20T10:30:00.000000Z',
-            updated_at: '2024-10-20T10:30:00.000000Z',
-            product: {
-                id_produk: 3,
-                nama_produk: 'Hoodie Custom Store',
-                slug: 'hoodie-custom-store',
-                harga: 200000,
-                deskripsi: 'Hoodie fleece tebal hangat dengan pilihan template desain eksklusif.',
-                stok: 20,
-                category_id: 3,
-                gambar: 'hoodie-grey.jpg',
-                gambar_url: '/storage/products/hoodie-grey.jpg',
-                status: true,
-                allow_custom_design: true,
-                enable_design_feature: true,
-                created_at: '2024-01-01',
-                updated_at: '2024-01-01',
-            },
-            options: {
-                variant: {
-                    Size: 'XL',
-                    Color: 'Grey'
-                },
-                design: {
-                    type: 'template',
-                    value: 'https://placehold.co/300x300/png?text=Store+Template+V1',
-                    original_filename: 'Template Keren V1'
-                }
-            }
-        }
-    ]
+// Status configurations for display
+const ORDER_STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
+    pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+    processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Package },
+    shipped: { label: 'Shipped', color: 'bg-purple-100 text-purple-800', icon: Truck },
+    completed: { label: 'Completed', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+    cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
+};
+
+const PAYMENT_STATUS_CONFIG: Record<PaymentStatus, { label: string; color: string }> = {
+    unpaid: { label: 'Unpaid', color: 'bg-red-100 text-red-800' },
+    paid: { label: 'Paid', color: 'bg-green-100 text-green-800' },
+    expired: { label: 'Expired', color: 'bg-gray-100 text-gray-800' },
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -162,11 +39,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Detail Order', href: '#' },
 ];
 
-export default function Show({ order: realOrder }: PageProps<{ order: Order }>) {
-    // USE DUMMY ORDER FOR UI DEVELOPMENT AS REQUESTED
-    const order = DUMMY_ORDER;
-    // const order = realOrder; // Uncomment this for real data later
-
+export default function Show({ order }: PageProps<{ order: Order }>) {
     const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -183,6 +56,30 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
     const handleOpenDetail = (item: OrderItem) => {
         setSelectedItem(item);
         setIsDetailOpen(true);
+    };
+
+    // Calculate subtotal from items
+    const subtotal = order.items?.reduce((acc, item) => acc + (item.price * item.quantity), 0) ?? 0;
+    const tax = subtotal * 0.11;
+
+    // Get status configurations
+    const orderStatusConfig = ORDER_STATUS_CONFIG[order.order_status] || ORDER_STATUS_CONFIG.pending;
+    const paymentStatusConfig = PAYMENT_STATUS_CONFIG[order.payment_status] || PAYMENT_STATUS_CONFIG.unpaid;
+    const StatusIcon = orderStatusConfig.icon;
+
+    // Get design image URL - handles both uploaded files and template URLs
+    const getDesignUrl = (design: { type: string; value: string | number; original_filename?: string } | null | undefined): string | null => {
+        if (!design || !design.value) return null;
+
+        // Ensure value is a string (backend might send ID as number in some edge cases)
+        const valueStr = String(design.value);
+        if (!valueStr || valueStr === 'null' || valueStr === 'undefined') return null;
+
+        // If it's a relative path (uploaded file), prepend /storage/
+        if (!valueStr.startsWith('http')) {
+            return `/storage/${valueStr}`;
+        }
+        return valueStr;
     };
 
     return (
@@ -207,16 +104,13 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
                         </p>
                     </div>
                     <div className="flex gap-2 ml-6 sm:ml-0">
-                        <Badge variant="outline" className={`capitalize ${order.order_status === 'completed' ? 'bg-green-100 text-green-800' :
-                            order.order_status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                'bg-blue-100 text-blue-800'
-                            }`}>
-                            Status: {order.order_status}
+                        <Badge variant="outline" className={`capitalize ${orderStatusConfig.color}`}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            Status: {orderStatusConfig.label}
                         </Badge>
-                        <Badge variant="outline" className={`capitalize ${order.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
-                            'bg-yellow-100 text-yellow-800'
-                            }`}>
-                            Pembayaran: {order.payment_status}
+                        <Badge variant="outline" className={`capitalize ${paymentStatusConfig.color}`}>
+                            <CreditCard className="h-3 w-3 mr-1" />
+                            Pembayaran: {paymentStatusConfig.label}
                         </Badge>
                     </div>
                 </div>
@@ -245,70 +139,92 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {order.items.map((item) => (
-                                            <TableRow key={item.id}>
-                                                <TableCell className="w-[30%]">
-                                                    <div className="font-medium">{item.product.nama_produk}</div>
-                                                    {item.options?.variant && (
-                                                        <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                                                            {Object.entries(item.options.variant).map(([key, value]) => (
-                                                                <div key={key}><span className="opacity-70">{key}:</span> {value}</div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="w-[25%] px-0">
-                                                    {item.options?.design ? (
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-12 w-12 rounded overflow-hidden bg-slate-50 border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => handleOpenDetail(item)}>
-                                                                <img
-                                                                    src={item.options.design.value}
-                                                                    alt="Thumb"
-                                                                    className="h-full w-full object-cover"
-                                                                />
-                                                            </div>
-                                                            <div className="min-w-0 flex-1">
-                                                                <Badge variant="secondary" className="text-[10px] h-5 mb-1">
-                                                                    {item.options.design.type === 'upload' ? 'Upload' : 'Template'}
-                                                                </Badge>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-muted-foreground text-xs italic">-</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>{formatCurrency(item.price)}</TableCell>
-                                                <TableCell>{item.quantity}</TableCell>
-                                                <TableCell className="font-medium">
-                                                    {formatCurrency(item.price * item.quantity)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDetail(item)} title="Lihat Detail & Spesifikasi">
-                                                        <Eye className="h-4 w-4 text-slate-500" />
-                                                    </Button>
+                                        {order.items && order.items.length > 0 ? (
+                                            order.items.map((item) => {
+                                                const designUrl = getDesignUrl(item.options?.design);
+                                                return (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell className="w-[30%]">
+                                                            <div className="font-medium">{item.product?.nama_produk || 'Product'}</div>
+                                                            {item.options?.variant && (
+                                                                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                                                                    {Object.entries(item.options.variant).map(([key, value]) => (
+                                                                        <div key={key}><span className="opacity-70">{key}:</span> {value}</div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="w-[25%] px-0">
+                                                            {item.options?.design ? (
+                                                                <div className="flex items-center gap-3">
+                                                                    <div
+                                                                        className="h-12 w-12 rounded overflow-hidden bg-slate-50 border cursor-pointer hover:opacity-80 transition-opacity"
+                                                                        onClick={() => handleOpenDetail(item)}
+                                                                    >
+                                                                        {designUrl ? (
+                                                                            <img
+                                                                                src={designUrl}
+                                                                                alt="Thumb"
+                                                                                className="h-full w-full object-cover"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="h-full w-full flex items-center justify-center">
+                                                                                <FileIcon className="h-4 w-4 text-muted-foreground" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <Badge variant="secondary" className="text-[10px] h-5 mb-1">
+                                                                            {item.options.design.type === 'upload' ? 'Upload' : 'Template'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-muted-foreground text-xs italic">-</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell>{formatCurrency(item.price)}</TableCell>
+                                                        <TableCell>{item.quantity}</TableCell>
+                                                        <TableCell className="font-medium">
+                                                            {formatCurrency(item.price * item.quantity)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleOpenDetail(item)} title="Lihat Detail & Spesifikasi">
+                                                                <Eye className="h-4 w-4 text-slate-500" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                    Tidak ada item dalam pesanan ini.
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
+                                        )}
                                     </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
 
-                        {/* Order Calculation - Keeping same as before */}
+                        {/* Order Calculation */}
                         <Card>
                             <CardContent className="pt-6">
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground">Subtotal Produk</span>
-                                        <span>{formatCurrency(DUMMY_ORDER.items.reduce((acc, item) => acc + (item.price * item.quantity), 0))}</span>
+                                        <span>{formatCurrency(subtotal)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Biaya Pengiriman ({order.shipping_method.toUpperCase()})</span>
-                                        <span>{formatCurrency(order.shipping_cost)}</span>
+                                        <span className="text-muted-foreground">
+                                            Biaya Pengiriman ({order.shipping_method?.toUpperCase() || 'N/A'})
+                                        </span>
+                                        <span>{formatCurrency(order.shipping_cost || 0)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground">Pajak PPN (11%)</span>
-                                        <span>{formatCurrency(DUMMY_ORDER.items.reduce((acc, item) => acc + (item.price * item.quantity), 0) * 0.11)}</span>
+                                        <span>{formatCurrency(Math.round(tax))}</span>
                                     </div>
                                     <Separator className="my-2" />
                                     <div className="flex justify-between font-bold text-lg">
@@ -318,9 +234,41 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Tracking & Admin Notes - Show if available */}
+                        {(order.tracking_number || order.admin_notes || order.estimated_completion_date) && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base">
+                                        <Info className="h-4 w-4" />
+                                        Informasi Tambahan
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 text-sm">
+                                    {order.tracking_number && (
+                                        <div className="space-y-1">
+                                            <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Nomor Resi</div>
+                                            <div className="font-mono bg-muted px-3 py-2 rounded">{order.tracking_number}</div>
+                                        </div>
+                                    )}
+                                    {order.estimated_completion_date && (
+                                        <div className="space-y-1">
+                                            <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Estimasi Selesai</div>
+                                            <div>{new Date(order.estimated_completion_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                                        </div>
+                                    )}
+                                    {order.admin_notes && (
+                                        <div className="space-y-1">
+                                            <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Catatan Admin</div>
+                                            <div className="bg-muted px-3 py-2 rounded whitespace-pre-wrap">{order.admin_notes}</div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
 
-                    {/* Right Column - Customer & Info - Keeping same as before */}
+                    {/* Right Column - Customer & Shipping Info */}
                     <div className="space-y-6">
                         <Card>
                             <CardHeader>
@@ -335,19 +283,19 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
                                         <User className="h-4 w-4 text-slate-500" />
                                     </div>
                                     <div>
-                                        <div className="font-medium">{order.user.name}</div>
-                                        <div className="text-muted-foreground text-xs">Customer ID: #{order.user.id}</div>
+                                        <div className="font-medium">{order.user?.name || 'Customer'}</div>
+                                        <div className="text-muted-foreground text-xs">Customer ID: #{order.user?.id || order.user_id}</div>
                                     </div>
                                 </div>
                                 <Separator />
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2 text-muted-foreground">
                                         <Mail className="h-3.5 w-3.5" />
-                                        <span>{order.user.email}</span>
+                                        <span>{order.user?.email || 'N/A'}</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-muted-foreground">
                                         <Phone className="h-3.5 w-3.5" />
-                                        <span>{order.shipping_address.phone}</span>
+                                        <span>{order.shipping_address?.phone || 'N/A'}</span>
                                     </div>
                                 </div>
                             </CardContent>
@@ -363,22 +311,29 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
                             <CardContent className="space-y-4 text-sm">
                                 <div className="space-y-1">
                                     <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Metode</div>
-                                    <div className="font-medium capitalize">{order.shipping_method.replace('_', ' ')}</div>
+                                    <div className="font-medium capitalize">{order.shipping_method?.replace('_', ' ').toUpperCase() || 'N/A'}</div>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Alamat Penerima</div>
-                                    <div className="flex gap-2">
-                                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                                        <div>
-                                            <div className="font-medium">{order.shipping_address.name}</div>
-                                            <div className="text-muted-foreground leading-relaxed">
-                                                {order.shipping_address.address}<br />
-                                                {order.shipping_address.city}, {order.shipping_address.postal_code}
+                                    <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Metode Pembayaran</div>
+                                    <div className="font-medium capitalize">{order.payment_method?.replace('_', ' ') || 'N/A'}</div>
+                                </div>
+
+                                {order.shipping_address && (
+                                    <div className="space-y-1">
+                                        <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Alamat Penerima</div>
+                                        <div className="flex gap-2">
+                                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <div className="font-medium">{order.shipping_address.name}</div>
+                                                <div className="text-muted-foreground leading-relaxed">
+                                                    {order.shipping_address.address}<br />
+                                                    {order.shipping_address.city}, {order.shipping_address.postal_code}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -403,22 +358,27 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
                                     <h3 className="text-sm font-medium text-muted-foreground mb-2">Informasi Produk</h3>
                                     <div className="flex gap-4">
                                         <div className="h-24 w-24 rounded-lg bg-white overflow-hidden border p-1">
-                                            {/* Simulate Product Image */}
-                                            <img
-                                                src={selectedItem.product.gambar_url}
-                                                alt={selectedItem.product.nama_produk}
-                                                className="h-full w-full object-contain"
-                                            />
+                                            {selectedItem.product?.gambar_url ? (
+                                                <img
+                                                    src={selectedItem.product.gambar_url}
+                                                    alt={selectedItem.product?.nama_produk || 'Product'}
+                                                    className="h-full w-full object-contain"
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full flex items-center justify-center bg-muted">
+                                                    <Package className="h-8 w-8 text-muted-foreground" />
+                                                </div>
+                                            )}
                                         </div>
                                         <div>
-                                            <div className="font-bold">{selectedItem.product.nama_produk}</div>
-                                            <div className="text-sm text-slate-500 mt-1">{selectedItem.product.deskripsi}</div>
+                                            <div className="font-bold">{selectedItem.product?.nama_produk || 'Product'}</div>
+                                            <div className="text-sm text-slate-500 mt-1">{selectedItem.product?.deskripsi || ''}</div>
                                             <div className="mt-2 font-medium text-primary">{formatCurrency(selectedItem.price)} x {selectedItem.quantity}</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {selectedItem.options?.variant && (
+                                {selectedItem.options?.variant && Object.keys(selectedItem.options.variant).length > 0 && (
                                     <div>
                                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Spesifikasi Varian</h3>
                                         <div className="bg-slate-50 rounded-lg p-3 border grid grid-cols-2 gap-2 text-sm">
@@ -447,27 +407,41 @@ export default function Show({ order: realOrder }: PageProps<{ order: Order }>) 
                                 {selectedItem.options?.design ? (
                                     <div className="space-y-4">
                                         <div className="aspect-square w-full bg-slate-100 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center relative overflow-hidden group">
-                                            <img
-                                                src={selectedItem.options.design.value}
-                                                alt="Full Design Preview"
-                                                className="max-h-full max-w-full object-contain"
-                                            />
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button variant="secondary" size="sm" className="gap-2">
-                                                    <Download className="h-4 w-4" /> Unduh Resolusi Penuh
-                                                </Button>
-                                            </div>
+                                            {getDesignUrl(selectedItem.options.design) ? (
+                                                <img
+                                                    src={getDesignUrl(selectedItem.options.design)!}
+                                                    alt="Full Design Preview"
+                                                    className="max-h-full max-w-full object-contain"
+                                                />
+                                            ) : (
+                                                <FileIcon className="h-16 w-16 text-muted-foreground" />
+                                            )}
+                                            {selectedItem.options.design.type === 'upload' && getDesignUrl(selectedItem.options.design) && (
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        className="gap-2"
+                                                        asChild
+                                                    >
+                                                        <a href={getDesignUrl(selectedItem.options.design)!} download target="_blank" rel="noopener noreferrer">
+                                                            <Download className="h-4 w-4" /> Unduh File
+                                                        </a>
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm flex gap-2 items-start">
-                                            <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                            <div>
-                                                <div className="font-bold text-xs uppercase mb-0.5">File Name</div>
-                                                <div className="font-mono break-all">{selectedItem.options.design.original_filename}</div>
+                                        {selectedItem.options.design.original_filename && (
+                                            <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm flex gap-2 items-start">
+                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                                <div>
+                                                    <div className="font-bold text-xs uppercase mb-0.5">File Name</div>
+                                                    <div className="font-mono break-all">{selectedItem.options.design.original_filename}</div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
 
-                                        {/* If it's a store template, we could show extra info here */}
                                         {selectedItem.options.design.type === 'template' && (
                                             <p className="text-xs text-muted-foreground text-center">
                                                 User memilih template desain yang disediakan oleh toko.

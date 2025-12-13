@@ -238,10 +238,55 @@ class OrderController extends Controller
             abort(403);
         }
 
+        $order->load('user', 'items.product');
+
+        // Resolve design template paths for each order item
+        $order->items->transform(function ($item) {
+            if ($item->options && isset($item->options['design'])) {
+                $design = $item->options['design'];
+
+                // If design type is template and value is an ID (numeric), look up the template
+                if (
+                    isset($design['type']) &&
+                    $design['type'] === 'template' &&
+                    isset($design['value']) &&
+                    is_numeric($design['value'])
+                ) {
+                    $template = \App\Features\DesignTemplate\DesignTemplate::find($design['value']);
+                    if ($template) {
+                        // Update the options with resolved template data
+                        $options = $item->options;
+                        $options['design'] = [
+                            'type' => 'template',
+                            'value' => $template->file_path ?? $template->thumbnail_path,
+                            'original_filename' => $template->name,
+                            'template_id' => $design['value'],
+                        ];
+                        $item->options = $options;
+                    }
+                }
+
+                // If design type is upload and value is a path, ensure it's a string
+                if (
+                    isset($design['type']) &&
+                    $design['type'] === 'upload' &&
+                    isset($design['value'])
+                ) {
+                    // Ensure value is a string
+                    $options = $item->options;
+                    $options['design']['value'] = (string) $design['value'];
+                    $item->options = $options;
+                }
+            }
+
+            return $item;
+        });
+
         return Inertia::render('Features/Order/Show', [
-            'order' => $order->load('user', 'items.product'),
+            'order' => $order,
         ]);
     }
+
 
     /**
      * Show the form for editing the specified resource for Admin.
