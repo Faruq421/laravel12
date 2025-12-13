@@ -19,6 +19,7 @@ class Order extends Model
         'shipping_method',
         'payment_method',
         'payment_status',
+        'tracking_number',
         'estimated_completion_date',
         'admin_notes',
     ];

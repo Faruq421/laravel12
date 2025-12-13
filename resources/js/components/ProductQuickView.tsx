@@ -1,6 +1,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
+import { route } from 'ziggy-js';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { useDropzone } from 'react-dropzone';
@@ -91,7 +92,7 @@ const ProductGallery = ({ product, onTemplateSelect, selectedTemplateId }: {
         }
     };
 
-     useEffect(() => {
+    useEffect(() => {
         if (selectedTemplateId !== null) {
             const index = galleryItems.findIndex(item => item.type === 'template' && item.id === selectedTemplateId);
             if (index !== -1 && index !== current) {
@@ -217,12 +218,12 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
             setData('design', { type: 'template', value: selectedTemplate.id });
         } else if (uploadedFile) {
             setData('design', { type: 'upload', value: uploadedFile });
-        // 'existingDesign' akan ditangani saat memuat data, bukan di sini
+            // 'existingDesign' akan ditangani saat memuat data, bukan di sini
         } else if (!isEditMode) { // Hanya reset jika BUKAN mode edit
             setData('design', null);
         }
     }, [selectedTemplate, uploadedFile, setData, isEditMode]);
-     useEffect(() => {
+    useEffect(() => {
         if (product) setData('product_id', product.id_produk);
     }, [product, setData]);
 
@@ -289,9 +290,9 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const areAllOptionsSelected = hasAttributes ? Object.keys(selectedOptions).length === Object.keys(attributeGroups).length : true;
 
     const isDesignSelected = !product?.enable_design_feature ||
-                             !!selectedTemplate ||
-                             !!uploadedFile ||
-                             !!existingDesign;
+        !!selectedTemplate ||
+        !!uploadedFile ||
+        !!existingDesign;
 
     const isActionDisabled = !areAllOptionsSelected || !isDesignSelected || processing || !product;
 
@@ -323,22 +324,31 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const handleUpdateCart = () => {
         if (!cartItemId || !product) return;
 
-        // Siapkan data untuk dikirim.
-        // 'data' (dari useForm) sudah berisi semua state terbaru.
-        const formData = {
-            ...data,
-            _method: 'PATCH' // <-- Method spoofing untuk Laravel
+        // Siapkan data untuk update menggunakan router.post dengan method spoofing
+        const updateData: Record<string, unknown> = {
+            _method: 'PATCH', // Method spoofing untuk Laravel
+            product_id: product.id_produk,
+            quantity: quantity,
+            variant: selectedOptions,
+            note: note,
         };
 
-        // Gunakan 'post' Inertia untuk update.
-        // Inertia akan otomatis menangani file upload.
-        post(route('cart.update', { cartItemId }), {
-            data: formData, // Kirim data yang sudah disiapkan
+        // Handle design data
+        if (selectedTemplate) {
+            updateData.design = { type: 'template', value: selectedTemplate.id };
+        } else if (uploadedFile) {
+            updateData.design = { type: 'upload', value: uploadedFile };
+        } else if (existingDesign) {
+            updateData.design = { type: 'upload', value: existingDesign.value, original_filename: existingDesign.original_filename };
+        }
+
+        // Gunakan router.post dengan method spoofing untuk menangani file upload
+        router.post(route('cart.update', { cartItemId }), updateData, {
+            forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 toast.success('Keranjang berhasil diperbarui.');
-                onClose(); // Tutup modal setelah berhasil
-                // Tidak perlu reload manual, Inertia akan mengurusnya
+                onClose();
             },
             onError: (errors) => {
                 console.error("Cart Update Error:", errors);
@@ -350,7 +360,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                 <DialogHeader className="sr-only">
+                <DialogHeader className="sr-only">
                     <DialogTitle>Detail Cepat Produk</DialogTitle>
                     <DialogDescription>Tampilan detail cepat untuk melihat dan mengkonfigurasi produk sebelum ditambahkan ke keranjang.</DialogDescription>
                 </DialogHeader>
@@ -398,7 +408,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
 
                                 {/* Opsi Desain */}
                                 {product.enable_design_feature && (
-                                     <div>
+                                    <div>
                                         <Label className="text-md mb-2 block font-semibold">Opsi Desain</Label>
                                         <Tabs defaultValue={product.design_templates?.length > 0 ? "template" : "upload"} className="w-full">
                                             <TabsList className={cn("grid w-full", product.allow_custom_design && product.design_templates?.length > 0 ? "grid-cols-2" : "grid-cols-1")}>
@@ -475,13 +485,13 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                                     </div>
                                     <div>
                                         <Label htmlFor="note_modal" className="text-md mb-2 block font-semibold">Catatan (Opsional)</Label>
-                                        <Textarea id="note_modal" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tulis catatan untuk pesanan Anda di sini..." className="w-full" rows={2}/>
+                                        <Textarea id="note_modal" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tulis catatan untuk pesanan Anda di sini..." className="w-full" rows={2} />
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2 border-t pt-4 mt-4">
-                             <div className="text-left">
+                            <div className="text-left">
                                 <span className="text-sm text-gray-500">Total Harga</span>
                                 <p className="text-2xl font-bold">Rp {totalPrice.toLocaleString('id-ID')}</p>
                             </div>
@@ -491,7 +501,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                                         <div className="w-full sm:w-auto">
                                             <Button size="lg" onClick={isEditMode ? handleUpdateCart : handleAddToCart} disabled={isEditMode ? processing : isActionDisabled} className="w-full bg-[#FF6500] py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-[#FF6500]/90 disabled:cursor-not-allowed disabled:bg-gray-400">
                                                 {isEditMode ? <RefreshCw className="mr-3 h-6 w-6" /> : <ShoppingCart className="mr-3 h-6 w-6" />}
-                                                {isEditMode ? 'Perbarui Pesanan' : 'Tambah ke Keranjang'}
+                                                {isEditMode ? 'Rubah Pesanan' : 'Tambah ke Keranjang'}
                                             </Button>
                                         </div>
                                     </TooltipTrigger>

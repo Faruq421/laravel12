@@ -42,6 +42,16 @@ class OrderController extends Controller
             });
         }
 
+        // Filter by order status
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('order_status', $request->status);
+        }
+
+        // Filter by payment status
+        if ($request->filled('payment_status') && $request->payment_status !== 'all') {
+            $query->where('payment_status', $request->payment_status);
+        }
+
         if ($request->filled('sort_by') && $request->filled('sort_dir')) {
             $query->orderBy($request->sort_by, $request->sort_dir);
         } else {
@@ -49,8 +59,8 @@ class OrderController extends Controller
         }
 
         return Inertia::render('Features/Order/Index', [
-            'items' => $query->with('user')->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search', 'sort_by', 'sort_dir']),
+            'items' => $query->with('user', 'items.product')->paginate(10)->withQueryString(),
+            'filters' => $request->only(['search', 'sort_by', 'sort_dir', 'status', 'payment_status']),
         ]);
     }
 
@@ -249,12 +259,25 @@ class OrderController extends Controller
     public function update(Request $request, Order $order)
     {
         $request->validate([
-            'order_status' => 'required|in:pending,processing,shipped,completed,cancelled',
+            'order_status' => 'sometimes|required|in:pending,processing,shipped,completed,cancelled',
+            'payment_status' => 'sometimes|required|in:unpaid,paid,expired',
+            'tracking_number' => 'nullable|string|max:100',
             'estimated_completion_date' => 'nullable|date',
             'admin_notes' => 'nullable|string',
         ]);
 
-        $order->update($request->only(['order_status', 'estimated_completion_date', 'admin_notes']));
+        $order->update($request->only([
+            'order_status',
+            'payment_status',
+            'tracking_number',
+            'estimated_completion_date',
+            'admin_notes'
+        ]));
+
+        // If request expects JSON (from AJAX), return JSON response
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Order updated successfully.', 'order' => $order]);
+        }
 
         return redirect()->route('orders.show', $order)->with('message', 'Order updated successfully.');
     }

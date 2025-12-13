@@ -1,6 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,10 +11,12 @@ import { Truck, CreditCard, Banknote, ShieldCheck, ShoppingBag, Loader2, CheckCi
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SharedData } from '@/types';
-import SiteLayout from '@/layouts/SiteLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// --- Type Definitions ---
+import SiteLayout from '@/layouts/SiteLayout';
+
+// ... (existing imports)
+
+
 interface CartItem {
     id: string;
     product_id: number;
@@ -57,6 +60,8 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
 
     // Wizard State
     const [step, setStep] = useState<CheckoutStep>('address');
+
+
 
     // Initialize form with useForm
     const { data, setData, post, processing, errors, transform } = useForm({
@@ -504,7 +509,7 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground">Pengiriman</span>
                                         <span className="font-medium text-primary">
-                                            {shippingCost === 0 ? 'Gratis' : `Rp ${shippingCost.toLocaleString('id-ID')}`}
+                                            {shippingCost === 0 ? '-' : `Rp ${shippingCost.toLocaleString('id-ID')}`}
                                         </span>
                                     </div>
                                     <div className="flex justify-between text-sm">
@@ -554,6 +559,8 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
                 </div>
 
             </div>
+
+
         </SiteLayout>
     );
 }
