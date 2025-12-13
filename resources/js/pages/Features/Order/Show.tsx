@@ -103,21 +103,23 @@ export default function Show({ order }: PageProps<{ order: Order }>) {
             <div className="p-4 sm:p-6 lg:p-8 space-y-6">
                 {/* Header Section */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" asChild>
+                    <div className="flex items-start gap-2">
+                        {isAdmin && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 mt-1" asChild>
                                 <Link href={route('orders.index')}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Link>
                             </Button>
+                        )}
+                        <div>
                             <h1 className="text-2xl font-bold tracking-tight">Pesanan #{order.id}</h1>
+                            <p className="text-muted-foreground flex items-center gap-2 text-sm mt-1">
+                                <Calendar className="h-3.5 w-3.5" />
+                                {formatDate(order.created_at)}
+                            </p>
                         </div>
-                        <p className="text-muted-foreground flex items-center gap-2 text-sm ml-6">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {formatDate(order.created_at)}
-                        </p>
                     </div>
-                    <div className="flex gap-2 ml-6 sm:ml-0">
+                    <div className="flex gap-2 sm:ml-0">
                         <Badge variant="outline" className={`capitalize ${orderStatusConfig.color}`}>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             Status: {orderStatusConfig.label}
