@@ -219,7 +219,7 @@ class OrderController extends Controller
             ]]);
 
             // 8. Redirect to order detail/success page
-            return redirect()->route('orders.show', $order)->with('message', 'Pesanan Anda berhasil dibuat!');
+            return redirect()->route('orders.my')->with('message', 'Pesanan Anda berhasil dibuat!');
 
         } catch (\Exception $e) {
             Log::error('Order creation failed: ' . $e->getMessage());

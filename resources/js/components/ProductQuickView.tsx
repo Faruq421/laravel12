@@ -1,6 +1,6 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useForm, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
@@ -144,26 +144,21 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [existingDesign, setExistingDesign] = useState<{ value: string; original_filename: string } | null>(null);
 
-    const { data, setData, post, processing, reset } = useForm({
-        product_id: product?.id_produk,
-        quantity: 1,
-        variant: {} as Record<string, number>,
-        // Tipe 'design' disederhanakan agar cocok dengan ProductShowPage
-        design: null as { type: 'template' | 'upload', value: number | File | null } | null,
-        note: "",
-    });
+    // Track processing state for button disable
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const resetState = useCallback(() => {
-        reset();
         setQuantity(1);
         setSelectedOptions({});
         setNote("");
         setSelectedTemplate(null);
         setUploadedFile(null);
         setExistingDesign(null);
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-    }, [reset, previewUrl]);
+        setPreviewUrl(prev => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+        });
+    }, []); // No dependencies - stable function reference
 
     useEffect(() => {
         if (!isOpen) {
@@ -207,25 +202,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                 onClose();
             })
             .finally(() => setIsLoading(false));
-    }, [isOpen, productSlug, cartItemId, isEditMode, onClose, resetState]);
-
-    // --- Sinkronisasi State ke Form ---
-    useEffect(() => { setData('quantity', quantity) }, [quantity, setData]);
-    useEffect(() => { setData('variant', selectedOptions) }, [selectedOptions, setData]);
-    useEffect(() => { setData('note', note) }, [note, setData]);
-    useEffect(() => {
-        if (selectedTemplate) {
-            setData('design', { type: 'template', value: selectedTemplate.id });
-        } else if (uploadedFile) {
-            setData('design', { type: 'upload', value: uploadedFile });
-            // 'existingDesign' akan ditangani saat memuat data, bukan di sini
-        } else if (!isEditMode) { // Hanya reset jika BUKAN mode edit
-            setData('design', null);
-        }
-    }, [selectedTemplate, uploadedFile, setData, isEditMode]);
-    useEffect(() => {
-        if (product) setData('product_id', product.id_produk);
-    }, [product, setData]);
+    }, [isOpen, productSlug, cartItemId, isEditMode, onClose]); // Removed resetState to prevent re-fetch on file upload
 
 
     // --- Logika Atribut & Harga ---
@@ -294,7 +271,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         !!uploadedFile ||
         !!existingDesign;
 
-    const isActionDisabled = !areAllOptionsSelected || !isDesignSelected || processing || !product;
+    const isActionDisabled = !areAllOptionsSelected || !isDesignSelected || isSubmitting || !product;
 
     const getTooltipMessage = () => {
         if (!product) return "Memuat data...";
@@ -306,17 +283,38 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const handleAddToCart = () => {
         if (!product) return;
 
-        // Gunakan 'post' standar dari useForm.
-        // 'data' sudah disinkronkan oleh useEffect.
-        post(route('cart.store'), {
+        setIsSubmitting(true);
+
+        // Siapkan data untuk add to cart
+        const addData = {
+            product_id: product.id_produk,
+            quantity: quantity,
+            variant: selectedOptions,
+            note: note,
+            design: null as { type: string; value: number | File } | null,
+        };
+
+        // Handle design data
+        if (selectedTemplate) {
+            addData.design = { type: 'template', value: selectedTemplate.id };
+        } else if (uploadedFile) {
+            addData.design = { type: 'upload', value: uploadedFile };
+        }
+
+        // Use router.post with forceFormData to handle file uploads without page reload
+        router.post(route('cart.store'), addData, {
+            forceFormData: true,
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => {
                 toast.success(`${product.nama_produk} berhasil ditambahkan.`);
+                setIsSubmitting(false);
                 onClose(); // Tutup modal setelah berhasil
             },
             onError: (errors) => {
                 console.error("Cart Add Error:", errors);
                 toast.error('Gagal menambahkan produk, periksa kembali pilihan Anda.');
+                setIsSubmitting(false);
             },
         });
     };
@@ -324,13 +322,16 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
     const handleUpdateCart = () => {
         if (!cartItemId || !product) return;
 
+        setIsSubmitting(true);
+
         // Siapkan data untuk update menggunakan router.post dengan method spoofing
-        const updateData: Record<string, unknown> = {
-            _method: 'PATCH', // Method spoofing untuk Laravel
+        const updateData = {
+            _method: 'PATCH' as const, // Method spoofing untuk Laravel
             product_id: product.id_produk,
             quantity: quantity,
             variant: selectedOptions,
             note: note,
+            design: null as { type: string; value: number | File | string; original_filename?: string } | null,
         };
 
         // Handle design data
@@ -346,13 +347,16 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
         router.post(route('cart.update', { cartItemId }), updateData, {
             forceFormData: true,
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => {
                 toast.success('Keranjang berhasil diperbarui.');
+                setIsSubmitting(false);
                 onClose();
             },
             onError: (errors) => {
                 console.error("Cart Update Error:", errors);
                 toast.error('Gagal memperbarui keranjang.');
+                setIsSubmitting(false);
             },
         });
     };
@@ -499,7 +503,7 @@ export function ProductQuickView({ productSlug, cartItemId, isOpen, onClose }: P
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className="w-full sm:w-auto">
-                                            <Button size="lg" onClick={isEditMode ? handleUpdateCart : handleAddToCart} disabled={isEditMode ? processing : isActionDisabled} className="w-full bg-[#FF6500] py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-[#FF6500]/90 disabled:cursor-not-allowed disabled:bg-gray-400">
+                                            <Button size="lg" onClick={isEditMode ? handleUpdateCart : handleAddToCart} disabled={isEditMode ? isSubmitting : isActionDisabled} className="w-full bg-[#FF6500] py-6 text-lg text-white shadow-lg transition-transform duration-200 hover:scale-105 hover:bg-[#FF6500]/90 disabled:cursor-not-allowed disabled:bg-gray-400">
                                                 {isEditMode ? <RefreshCw className="mr-3 h-6 w-6" /> : <ShoppingCart className="mr-3 h-6 w-6" />}
                                                 {isEditMode ? 'Rubah Pesanan' : 'Tambah ke Keranjang'}
                                             </Button>
