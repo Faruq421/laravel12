@@ -78,7 +78,9 @@ export default function Show({ order }: PageProps<{ order: Order }>) {
 
         // If it's a relative path (uploaded file), prepend /storage/
         if (!valueStr.startsWith('http')) {
-            return `/storage/${valueStr}`;
+            // Clean up path: replace backslashes, remove duplicate leading slashes or 'public/'
+            let cleanPath = valueStr.replace(/\\/g, '/').replace(/^public\//, '').replace(/^\/+/, '');
+            return `/storage/${cleanPath}`;
         }
         return valueStr;
     };

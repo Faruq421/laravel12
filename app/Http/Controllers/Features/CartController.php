@@ -187,8 +187,18 @@ class CartController extends Controller
 
     private function processDesignData(Request $request): ?array
     {
+        // Debug logging
+        Log::info('processDesignData called', [
+            'has_design' => $request->has('design'),
+            'design_type' => $request->input('design.type'),
+            'design_value_type' => gettype($request->input('design.value')),
+            'has_file' => $request->hasFile('design.value'),
+            'all_files' => array_keys($request->allFiles()),
+        ]);
+
         // If no design data is sent at all, do nothing.
         if (!$request->has('design') || !$request->input('design.type')) {
+            Log::info('processDesignData: No design data sent');
             return null;
         }
 
@@ -198,11 +208,19 @@ class CartController extends Controller
         // Case 1: New custom design upload
         if ($designType === 'upload' && $request->hasFile('design.value')) {
             $file = $request->file('design.value');
-            $path = $file->store('public/designs');
+            Log::info('processDesignData: Uploading file', [
+                'original_name' => $file->getClientOriginalName(),
+                'size' => $file->getSize(),
+                'mime' => $file->getMimeType(),
+            ]);
+            
+            $path = $file->store('designs', 'public');
+            
+            Log::info('processDesignData: File stored', ['path' => $path]);
             
             return [
                 'type' => 'upload',
-                'value' => str_replace('public/', '', $path),
+                'value' => $path,
                 'original_filename' => $file->getClientOriginalName(),
             ];
         }
@@ -210,12 +228,14 @@ class CartController extends Controller
         // Case 2: An existing design is being preserved during an update.
         // The value will be a string path, not a file.
         if ($designType === 'upload' && is_string($designValue)) {
+            Log::info('processDesignData: Preserving existing upload path', ['path' => $designValue]);
             // We trust the frontend is sending back the data it received.
             return $request->input('design');
         }
 
         // Case 3: Template selection
         if ($designType === 'template' && !empty($designValue)) {
+            Log::info('processDesignData: Template selected', ['template_id' => $designValue]);
             return [
                 'type' => 'template',
                 'value' => $designValue,
@@ -223,6 +243,10 @@ class CartController extends Controller
         }
 
         // Case 4: Fallback for invalid data
+        Log::warning('processDesignData: Fallback - invalid design data', [
+            'type' => $designType,
+            'value' => $designValue,
+        ]);
         return null;
     }
 
