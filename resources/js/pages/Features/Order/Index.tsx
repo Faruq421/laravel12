@@ -96,10 +96,11 @@ export default function Index({ items, filters }: PageProps<{ items: Pagination<
         [statusFilter, paymentFilter]
     );
 
-    useEffect(() => {
-        debouncedSearch(search);
-        return () => debouncedSearch.cancel();
-    }, [search, debouncedSearch]);
+    // Handled directly in onChange now to avoid mount-triggered reloads
+    // useEffect(() => {
+    //    debouncedSearch(search);
+    //    return () => debouncedSearch.cancel();
+    // }, [search, debouncedSearch]);
 
     // Handle filter changes
     const handleFilterChange = (type: 'status' | 'payment_status', value: string) => {
@@ -228,7 +229,10 @@ export default function Index({ items, filters }: PageProps<{ items: Pagination<
                                     placeholder="Cari pesanan..."
                                     className="w-full rounded-lg bg-background pl-8 sm:w-[250px]"
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        debouncedSearch(e.target.value);
+                                    }}
                                 />
                             </div>
                             <Select value={statusFilter} onValueChange={(v) => handleFilterChange('status', v)}>

@@ -29,6 +29,8 @@ interface Order {
     total_price: number;
     estimated_completion_date: string | null; // Tanggal estimasi
     items: OrderItem[];
+    reviews_count?: number;
+    reviews_edited_count?: number;
 }
 
 // Tipe untuk data paginasi
@@ -126,6 +128,17 @@ export default function MyOrdersPage() {
                                         <Button className="bg-[#FF6500] hover:bg-[#C40C0C]">
                                             Lacak Pengiriman
                                         </Button>
+                                    )}
+                                    {order.order_status?.toLowerCase() === 'completed' && (
+                                        <>
+                                            {(!order.reviews_edited_count || order.reviews_edited_count === 0) && (
+                                                <Button asChild className={`${order.reviews_count && order.reviews_count > 0 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-500 hover:bg-yellow-600'} text-white`}>
+                                                    <Link href={route('reviews.create-for-order', order.id)}>
+                                                        {order.reviews_count && order.reviews_count > 0 ? 'Update Penilaian' : 'Beri Penilaian'}
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                        </>
                                     )}
                                 </CardFooter>
                             </Card>

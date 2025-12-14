@@ -24,5 +24,10 @@ export const mainNavItems: NavItem[] = [
         href: route('orders.index', undefined, false),
         icon: Package,
     },
+        {
+        title: 'Reviews',
+        href: route('reviews.index', undefined, false),
+        icon: Package,
+    },
     // LINK BARU AKAN DITAMBAHKAN SECARA OTOMATIS DI SINI
 ];

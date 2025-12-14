@@ -347,7 +347,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Order updated successfully.', 'order' => $order]);
         }
 
-        return redirect()->route('orders.show', $order)->with('message', 'Order updated successfully.');
+        return redirect()->back()->with('message', 'Order updated successfully.');
     }
 
     /**
@@ -364,9 +364,13 @@ class OrderController extends Controller
         // 1. Ambil pesanan HANYA untuk pengguna yang sedang login
         //    Kita juga memuat relasi 'items' untuk menampilkan detail produk
         $orders = Order::where('user_id', $request->user()->id)
-            ->with('items.product') // Asumsi relasi ini ada
-            ->latest() // Tampilkan yang terbaru di atas
-            ->paginate(10); // Gunakan paginasi
+            ->with(['items.product']) 
+            ->withCount('reviews') // Cek apakah ada review
+            ->withCount(['reviews as reviews_edited_count' => function ($query) {
+                $query->where('is_edited', true);
+            }])
+            ->latest() 
+            ->paginate(10);
 
         // 2. Render halaman React BARU, kirim data 'orders' sebagai props
         return Inertia::render('Features/Order/MyOrdersPage', [
