@@ -6,16 +6,15 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Truck, CreditCard, Banknote, ShieldCheck, ShoppingBag, Loader2, CheckCircle2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SharedData } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import axios from 'axios';
 
 import SiteLayout from '@/layouts/SiteLayout';
-
-// ... (existing imports)
-
 
 interface CartItem {
     id: string;
@@ -32,11 +31,26 @@ interface CartItem {
     } | null;
 }
 
-interface ShippingMethod {
-    id: string;
+interface Province {
+    id: number;
     name: string;
-    price: number;
-    eta: string;
+}
+
+interface City {
+    id: number;
+    name: string;
+    type: string;
+    postal_code: string;
+}
+
+interface ShippingOption {
+    id: string;
+    courier: string;
+    courier_name: string;
+    service: string;
+    description: string;
+    cost: number;
+    etd: string;
 }
 
 interface PaymentMethod {
@@ -48,40 +62,193 @@ interface PaymentMethod {
 interface Props {
     cartItems: CartItem[];
     subtotal: number;
-    shippingMethods: ShippingMethod[];
     paymentMethods: PaymentMethod[];
 }
 
 type CheckoutStep = 'address' | 'shipping' | 'payment';
 
-export default function CheckoutPage({ cartItems, subtotal, shippingMethods, paymentMethods }: Props) {
+export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Props) {
     const { auth } = usePage<SharedData>().props;
     const user = auth.user;
 
     // Wizard State
     const [step, setStep] = useState<CheckoutStep>('address');
 
+    // Province/City State
+    const [provinces, setProvinces] = useState<Province[]>([]);
+    const [cities, setCities] = useState<City[]>([]);
+    const [isLoadingProvinces, setIsLoadingProvinces] = useState(true);
+    const [isLoadingCities, setIsLoadingCities] = useState(false);
 
+    // Shipping Options State
+    const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+    const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+    const [shippingError, setShippingError] = useState<string | null>(null);
+
+    // Selected IDs for cascading selects
+    const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+    const [selectedCityId, setSelectedCityId] = useState<string>('');
+
+    // Calculate total weight (assume 500g per item for now, can be improved later)
+    const totalWeight = useMemo(() => {
+        return cartItems.reduce((acc, item) => acc + (item.quantity * 500), 0);
+    }, [cartItems]);
 
     // Initialize form with useForm
-    const { data, setData, post, processing, errors, transform } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
         shipping_address: {
             name: user?.name || '',
             address: '',
             city: '',
+            city_id: 0,
+            province: '',
+            province_id: 0,
             postal_code: '',
             phone: '',
         },
-        shipping_method: '', // Remove default
-        payment_method: '',  // Remove default
+        shipping_method: {
+            courier: '',
+            service: '',
+            cost: 0,
+            etd: '',
+        },
+        payment_method: '',
         selected_items: cartItems.map(item => item.id),
     });
 
+    // Fetch provinces on mount
+    useEffect(() => {
+        const fetchProvinces = async () => {
+            try {
+                const response = await fetch('/shipping/provinces');
+                const result = await response.json();
+                if (result.success) {
+                    setProvinces(result.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch provinces:', error);
+            } finally {
+                setIsLoadingProvinces(false);
+            }
+        };
+        fetchProvinces();
+    }, []);
+
+    // Fetch cities when province changes
+    useEffect(() => {
+        if (!selectedProvinceId) {
+            setCities([]);
+            return;
+        }
+
+        const fetchCities = async () => {
+            setIsLoadingCities(true);
+            setCities([]);
+            setSelectedCityId('');
+            setShippingOptions([]);
+
+            try {
+                const response = await fetch(`/shipping/cities/${selectedProvinceId}`);
+                const result = await response.json();
+                if (result.success) {
+                    setCities(result.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch cities:', error);
+            } finally {
+                setIsLoadingCities(false);
+            }
+        };
+        fetchCities();
+    }, [selectedProvinceId]);
+
+    // Fetch shipping options when city is selected
+    useEffect(() => {
+        if (!selectedCityId) {
+            setShippingOptions([]);
+            return;
+        }
+
+        const fetchShippingOptions = async () => {
+            setIsLoadingShipping(true);
+            setShippingError(null);
+            setShippingOptions([]);
+
+            console.log('Fetching shipping options for city:', selectedCityId, 'weight:', totalWeight);
+
+            try {
+                const response = await axios.post('/shipping/all-options', {
+                    destination: parseInt(selectedCityId),
+                    weight: totalWeight,
+                });
+
+                const result = response.data;
+                console.log('Shipping API response:', result);
+
+                if (result.success) {
+                    console.log('Setting shipping options:', result.data.length, 'options');
+                    setShippingOptions(result.data);
+                } else {
+                    console.error('Shipping API error:', result.message);
+                    setShippingError(result.message || 'Gagal mengambil opsi pengiriman');
+                }
+            } catch (error: any) {
+                console.error('Failed to fetch shipping options:', error);
+                const message = error.response?.data?.message || 'Gagal terhubung ke layanan pengiriman';
+                setShippingError(message);
+            } finally {
+                setIsLoadingShipping(false);
+            }
+        };
+        fetchShippingOptions();
+    }, [selectedCityId, totalWeight]);
+
+    // Handle province selection
+    const handleProvinceChange = (provinceId: string) => {
+        setSelectedProvinceId(provinceId);
+        const province = provinces.find(p => p.id.toString() === provinceId);
+        if (province) {
+            setData('shipping_address', {
+                ...data.shipping_address,
+                province: province.name,
+                province_id: province.id,
+                city: '',
+                city_id: 0,
+            });
+        }
+    };
+
+    // Handle city selection
+    const handleCityChange = (cityId: string) => {
+        setSelectedCityId(cityId);
+        const city = cities.find(c => c.id.toString() === cityId);
+        if (city) {
+            setData('shipping_address', {
+                ...data.shipping_address,
+                city: `${city.type} ${city.name}`,
+                city_id: city.id,
+                postal_code: city.postal_code,
+            });
+        }
+    };
+
+    // Handle shipping method selection
+    const handleShippingMethodChange = (optionId: string) => {
+        const option = shippingOptions.find(o => o.id === optionId);
+        if (option) {
+            setData('shipping_method', {
+                courier: option.courier,
+                service: option.service,
+                cost: option.cost,
+                etd: option.etd,
+            });
+        }
+    };
+
     // --- Calculations ---
     const shippingCost = useMemo(() => {
-        const method = shippingMethods.find(m => m.id === data.shipping_method);
-        return method ? method.price : 0;
-    }, [data.shipping_method, shippingMethods]);
+        return data.shipping_method.cost || 0;
+    }, [data.shipping_method.cost]);
 
     const tax = subtotal * 0.11; // 11% tax
     const total = subtotal + shippingCost + tax;
@@ -95,7 +262,9 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
             data.shipping_address.name?.trim() !== '' &&
             data.shipping_address.address?.trim() !== '' &&
             data.shipping_address.phone?.trim() !== '' &&
-            data.shipping_method !== '' &&
+            data.shipping_address.city_id !== 0 &&
+            data.shipping_address.province_id !== 0 &&
+            data.shipping_method.cost > 0 &&
             data.payment_method !== ''
         );
     }, [data, step]);
@@ -109,9 +278,7 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
     // Step Navigation Handlers
     const goToShipping = () => {
         // Basic Client-side validation for address
-        if (!data.shipping_address.name || !data.shipping_address.address || !data.shipping_address.phone) {
-            // In a real app, you'd trigger form validation display here. 
-            // relying on HTML5 required for now or check manually
+        if (!data.shipping_address.name || !data.shipping_address.address || !data.shipping_address.phone || !selectedCityId) {
             alert("Mohon lengkapi alamat pengiriman terlebih dahulu.");
             return;
         }
@@ -119,7 +286,7 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
     };
 
     const goToPayment = () => {
-        if (!data.shipping_method) {
+        if (data.shipping_method.cost === 0) {
             alert("Mohon pilih metode pengiriman.");
             return;
         }
@@ -127,6 +294,7 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
     };
 
     const goToAddress = () => setStep('address');
+    const goToShippingStep = () => setStep('shipping');
 
     // Get the payment method icon
     const getPaymentIcon = (methodId: string) => {
@@ -137,6 +305,14 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
                 return Banknote;
         }
     };
+
+    // Get selected shipping option for display
+    const selectedShippingOption = useMemo(() => {
+        if (!data.shipping_method.courier || !data.shipping_method.service) return null;
+        return shippingOptions.find(
+            o => o.courier === data.shipping_method.courier && o.service === data.shipping_method.service
+        );
+    }, [data.shipping_method, shippingOptions]);
 
     // --- Render Logic for Order Summary (Reused in Mobile & Desktop) ---
     const OrderSummaryContent = () => (
@@ -270,14 +446,49 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="city">Kota / Kabupaten</Label>
-                                            <Input
-                                                id="city"
-                                                placeholder="Nama kota"
-                                                value={data.shipping_address.city}
-                                                onChange={e => setData('shipping_address', { ...data.shipping_address, city: e.target.value })}
-                                            />
+                                            <Label htmlFor="province">Provinsi</Label>
+                                            <Select
+                                                value={selectedProvinceId}
+                                                onValueChange={handleProvinceChange}
+                                                disabled={isLoadingProvinces}
+                                            >
+                                                <SelectTrigger className="h-11">
+                                                    <SelectValue placeholder={isLoadingProvinces ? "Memuat..." : "Pilih Provinsi"} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {provinces.map((province) => (
+                                                        <SelectItem key={province.id} value={province.id.toString()}>
+                                                            {province.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="city">Kota / Kabupaten</Label>
+                                            <Select
+                                                value={selectedCityId}
+                                                onValueChange={handleCityChange}
+                                                disabled={!selectedProvinceId || isLoadingCities}
+                                            >
+                                                <SelectTrigger className="h-11">
+                                                    <SelectValue placeholder={
+                                                        isLoadingCities ? "Memuat..." :
+                                                            !selectedProvinceId ? "Pilih Provinsi dulu" :
+                                                                "Pilih Kota"
+                                                    } />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {cities.map((city) => (
+                                                        <SelectItem key={city.id} value={city.id.toString()}>
+                                                            {city.type} {city.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="zip">Kode Pos</Label>
                                             <Input
@@ -287,26 +498,26 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
                                                 onChange={e => setData('shipping_address', { ...data.shipping_address, postal_code: e.target.value })}
                                             />
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phone">Nomor Telepon</Label>
-                                        <Input
-                                            id="phone"
-                                            placeholder="Untuk kurir menghubungi Anda"
-                                            value={data.shipping_address.phone}
-                                            onChange={e => setData('shipping_address', { ...data.shipping_address, phone: e.target.value })}
-                                            required
-                                        />
+                                        <div className="space-y-2">
+                                            <Label htmlFor="phone">Nomor Telepon</Label>
+                                            <Input
+                                                id="phone"
+                                                placeholder="Untuk kurir menghubungi Anda"
+                                                value={data.shipping_address.phone}
+                                                onChange={e => setData('shipping_address', { ...data.shipping_address, phone: e.target.value })}
+                                                required
+                                            />
+                                        </div>
                                     </div>
 
-                                    <Button type="button" onClick={goToShipping} className="w-full mt-4 h-11">
-                                        Lanjut ke Pengiriman
+                                    <Button type="button" onClick={goToShipping} className="w-full mt-4 h-11" disabled={!selectedCityId}>
+                                        {!selectedCityId ? 'Pilih Kota Terlebih Dahulu' : 'Lanjut ke Pengiriman'}
                                     </Button>
                                 </CardContent>
                             )}
                             {step !== 'address' && (
                                 <CardContent className="pb-6 pt-0">
-                                    <p className="text-sm text-muted-foreground">{data.shipping_address.name} | {data.shipping_address.address}...</p>
+                                    <p className="text-sm text-muted-foreground">{data.shipping_address.name} | {data.shipping_address.city} | {data.shipping_address.address}</p>
                                 </CardContent>
                             )}
                         </Card>
@@ -321,7 +532,7 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
                                         Metode Pengiriman
                                     </span>
                                     {step === 'payment' && (
-                                        <Button variant="ghost" size="sm" onClick={goToShipping} type="button" className="text-primary hover:text-primary/80">
+                                        <Button variant="ghost" size="sm" onClick={goToShippingStep} type="button" className="text-primary hover:text-primary/80">
                                             <Pencil className="h-4 w-4 mr-2" /> Ubah
                                         </Button>
                                     )}
@@ -329,40 +540,79 @@ export default function CheckoutPage({ cartItems, subtotal, shippingMethods, pay
                             </CardHeader>
                             {step === 'shipping' && (
                                 <CardContent className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                                    <RadioGroup
-                                        value={data.shipping_method}
-                                        onValueChange={(value) => setData('shipping_method', value)}
-                                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                    {isLoadingShipping ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                                            <span className="text-muted-foreground">Mengambil opsi pengiriman...</span>
+                                        </div>
+                                    ) : shippingError ? (
+                                        <div className="text-center py-8 text-destructive">
+                                            <p>{shippingError}</p>
+                                            <Button
+                                                variant="outline"
+                                                className="mt-4"
+                                                onClick={() => {
+                                                    // Retry fetching
+                                                    const tempCity = selectedCityId;
+                                                    setSelectedCityId('');
+                                                    setTimeout(() => setSelectedCityId(tempCity), 100);
+                                                }}
+                                            >
+                                                Coba Lagi
+                                            </Button>
+                                        </div>
+                                    ) : shippingOptions.length === 0 ? (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            <p>Tidak ada opsi pengiriman tersedia untuk lokasi ini.</p>
+                                        </div>
+                                    ) : (
+                                        <RadioGroup
+                                            value={data.shipping_method.courier && data.shipping_method.service
+                                                ? `${data.shipping_method.courier.toLowerCase()}_${data.shipping_method.service.toLowerCase().replace(/ /g, '_')}`
+                                                : ''
+                                            }
+                                            onValueChange={handleShippingMethodChange}
+                                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                        >
+                                            {shippingOptions.map((option) => (
+                                                <div key={option.id}>
+                                                    <RadioGroupItem value={option.id} id={`ship-${option.id}`} className="peer sr-only" />
+                                                    <Label
+                                                        htmlFor={`ship-${option.id}`}
+                                                        className="flex flex-col justify-between rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-muted/50 hover:text-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all cursor-pointer h-full"
+                                                    >
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <Truck className="h-5 w-5 text-muted-foreground peer-data-[state=checked]:text-primary" />
+                                                            <div>
+                                                                <span className="font-semibold text-sm">{option.courier}</span>
+                                                                <span className="text-xs text-muted-foreground ml-2">{option.service}</span>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{option.description}</p>
+                                                        <div className="flex justify-between items-end w-full mt-auto">
+                                                            <span className="text-xs text-muted-foreground font-medium">{option.etd} hari</span>
+                                                            <span className="font-bold text-foreground">Rp {option.cost.toLocaleString('id-ID')}</span>
+                                                        </div>
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </RadioGroup>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        onClick={goToPayment}
+                                        className="w-full mt-4 h-11"
+                                        disabled={data.shipping_method.cost === 0}
                                     >
-                                        {shippingMethods.map((method) => (
-                                            <div key={method.id}>
-                                                <RadioGroupItem value={method.id} id={`ship-${method.id}`} className="peer sr-only" />
-                                                <Label
-                                                    htmlFor={`ship-${method.id}`}
-                                                    className="flex flex-col justify-between rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-muted/50 hover:text-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all cursor-pointer h-full"
-                                                >
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <Truck className="h-5 w-5 text-muted-foreground peer-data-[state=checked]:text-primary" />
-                                                        <span className="font-semibold text-sm">{method.name}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-end w-full mt-auto">
-                                                        <span className="text-xs text-muted-foreground font-medium">{method.eta}</span>
-                                                        <span className="font-bold text-foreground">Rp {method.price.toLocaleString('id-ID')}</span>
-                                                    </div>
-                                                </Label>
-                                            </div>
-                                        ))}
-                                    </RadioGroup>
-                                    <Button type="button" onClick={goToPayment} className="w-full mt-4 h-11">
                                         Lanjut ke Pembayaran
                                     </Button>
                                 </CardContent>
                             )}
-                            {step === 'payment' && (
+                            {step === 'payment' && selectedShippingOption && (
                                 <CardContent className="pb-6 pt-0">
                                     <div className="flex items-center gap-2 text-sm text-foreground">
                                         <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                        {shippingMethods.find(m => m.id === data.shipping_method)?.name}
+                                        {selectedShippingOption.courier} - {selectedShippingOption.service} (Rp {selectedShippingOption.cost.toLocaleString('id-ID')})
                                     </div>
                                 </CardContent>
                             )}

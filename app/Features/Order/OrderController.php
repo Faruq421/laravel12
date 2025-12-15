@@ -64,12 +64,7 @@ class OrderController extends Controller
         ]);
     }
 
-    // Shipping methods available for checkout
-    const SHIPPING_METHODS = [
-        ['id' => 'jne', 'name' => 'JNE Reguler', 'price' => 15000, 'eta' => '2-3 Hari'],
-        ['id' => 'sicepat', 'name' => 'SiCepat BEST', 'price' => 27000, 'eta' => '1 Hari'],
-        ['id' => 'gosend', 'name' => 'GoSend Instant', 'price' => 45000, 'eta' => 'Jam ini'],
-    ];
+    // Shipping methods are now fetched dynamically from RajaOngkir API
 
     // Payment methods available for checkout
     const PAYMENT_METHODS = [
@@ -113,7 +108,6 @@ class OrderController extends Controller
         return Inertia::render('Features/Checkout/Index', [
             'cartItems' => $itemsForCheckout,
             'subtotal' => $subtotal,
-            'shippingMethods' => self::SHIPPING_METHODS,
             'paymentMethods' => self::PAYMENT_METHODS,
         ]);
     }
@@ -127,9 +121,16 @@ class OrderController extends Controller
             'shipping_address.name' => 'required|string|max:255',
             'shipping_address.address' => 'required|string|max:500',
             'shipping_address.city' => 'required|string|max:100',
+            'shipping_address.city_id' => 'required|integer',
+            'shipping_address.province' => 'required|string|max:100',
+            'shipping_address.province_id' => 'required|integer',
             'shipping_address.postal_code' => 'required|string|max:10',
             'shipping_address.phone' => 'required|string|max:20',
-            'shipping_method' => 'required|string|in:jne,sicepat,gosend',
+            'shipping_method' => 'required|array',
+            'shipping_method.courier' => 'required|string',
+            'shipping_method.service' => 'required|string',
+            'shipping_method.cost' => 'required|integer',
+            'shipping_method.etd' => 'nullable|string',
             'payment_method' => 'required|string|in:bca,credit_card',
             'selected_items' => 'required|array|min:1',
             'selected_items.*' => 'string', // Array of selected cart item IDs
@@ -161,9 +162,9 @@ class OrderController extends Controller
             }
         }
 
-        // 4. Get shipping cost based on selected method
-        $shippingMethodData = collect(self::SHIPPING_METHODS)->firstWhere('id', $validated['shipping_method']);
-        $shippingCost = $shippingMethodData ? $shippingMethodData['price'] : 0;
+        // 4. Get shipping cost from RajaOngkir data
+        $shippingCost = $validated['shipping_method']['cost'];
+        $shippingMethodName = $validated['shipping_method']['courier'] . ' - ' . $validated['shipping_method']['service'];
 
         // 5. Calculate tax (11%)
         $tax = $subtotal * 0.11;
@@ -173,7 +174,7 @@ class OrderController extends Controller
 
         $order = null;
         try {
-            DB::transaction(function () use ($validated, $itemsToProcess, $totalPrice, $shippingCost, $productsById, &$order) {
+            DB::transaction(function () use ($validated, $itemsToProcess, $totalPrice, $shippingCost, $shippingMethodName, $productsById, &$order) {
                 // Create order entry
                 $order = Order::create([
                     'user_id' => auth()->id(),
@@ -181,7 +182,7 @@ class OrderController extends Controller
                     'total_price' => $totalPrice,
                     'shipping_address' => $validated['shipping_address'],
                     'shipping_cost' => $shippingCost,
-                    'shipping_method' => $validated['shipping_method'],
+                    'shipping_method' => $shippingMethodName,
                     'payment_method' => $validated['payment_method'],
                     'payment_status' => 'unpaid',
                 ]);
