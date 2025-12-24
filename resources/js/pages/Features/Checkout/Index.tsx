@@ -1,4 +1,4 @@
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage, router } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,24 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useEffect, useMemo, useState } from 'react';
 import { Truck, CreditCard, Banknote, ShieldCheck, ShoppingBag, Loader2, CheckCircle2, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Midtrans Snap type declaration
+declare global {
+    interface Window {
+        snap: {
+            pay: (
+                token: string,
+                options: {
+                    onSuccess?: (result: unknown) => void;
+                    onPending?: (result: unknown) => void;
+                    onError?: (result: unknown) => void;
+                    onClose?: () => void;
+                }
+            ) => void;
+        };
+    }
+}
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SharedData } from '@/types';
@@ -65,7 +83,7 @@ interface Props {
     paymentMethods: PaymentMethod[];
 }
 
-type CheckoutStep = 'address' | 'shipping' | 'payment';
+type CheckoutStep = 'address' | 'shipping';
 
 export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Props) {
     const { auth } = usePage<SharedData>().props;
@@ -94,8 +112,8 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
         return cartItems.reduce((acc, item) => acc + (item.quantity * 500), 0);
     }, [cartItems]);
 
-    // Initialize form with useForm
-    const { data, setData, post, processing, errors } = useForm({
+    // Initialize form with useForm (for data management only, not submission)
+    const { data, setData, errors, setError, clearErrors } = useForm({
         shipping_address: {
             name: user?.name || '',
             address: '',
@@ -112,7 +130,6 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
             cost: 0,
             etd: '',
         },
-        payment_method: '',
         selected_items: cartItems.map(item => item.id),
     });
 
@@ -227,7 +244,7 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                 ...data.shipping_address,
                 city: `${city.type} ${city.name}`,
                 city_id: city.id,
-                postal_code: city.postal_code,
+                postal_code: city.postal_code || '',
             });
         }
     };
@@ -253,10 +270,9 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
     const tax = subtotal * 0.11; // 11% tax
     const total = subtotal + shippingCost + tax;
 
-    // Validation for "Pay" button
+    // Validation for "Pay" button - now only validates address and shipping
     const isFormValid = useMemo(() => {
-        // Must be on the final step AND have all data
-        if (step !== 'payment') return false;
+        if (step !== 'shipping') return false;
 
         return (
             data.shipping_address.name?.trim() !== '' &&
@@ -264,15 +280,109 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
             data.shipping_address.phone?.trim() !== '' &&
             data.shipping_address.city_id !== 0 &&
             data.shipping_address.province_id !== 0 &&
-            data.shipping_method.cost > 0 &&
-            data.payment_method !== ''
+            data.shipping_method.cost > 0
         );
     }, [data, step]);
 
-    // Handle form submission
-    const handleSubmit = (e: React.FormEvent) => {
+    // State for payment processing
+    const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+
+    // Handle form submission - creates order and triggers payment popup
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('checkout.store'));
+        setIsPaymentProcessing(true);
+        clearErrors();
+
+        try {
+            console.log('Submitting checkout form with data:', data);
+            const response = await axios.post(route('checkout.store'), data);
+
+            if (response.data.success && response.data.snap_token) {
+                const { snap_token, order_id } = response.data;
+
+                console.log('Order created, opening payment popup...');
+
+                // Open Midtrans Snap popup
+                if (window.snap) {
+                    window.snap.pay(snap_token, {
+                        onSuccess: (result: unknown) => {
+                            console.log('Payment success:', result);
+                            toast.success('Pembayaran berhasil!');
+                            router.visit(route('orders.show', order_id));
+                        },
+                        onPending: (result: unknown) => {
+                            console.log('Payment pending:', result);
+                            toast.info('Menunggu pembayaran. Silakan selesaikan pembayaran Anda.');
+                            router.visit(route('orders.show', order_id));
+                        },
+                        onError: (result: unknown) => {
+                            console.error('Payment error:', result);
+                            toast.error('Pembayaran gagal. Silakan coba lagi.');
+                            router.visit(route('orders.show', order_id));
+                        },
+                        onClose: () => {
+                            console.log('Payment popup closed');
+                            toast.info('Anda menutup popup pembayaran. Pesanan tetap tersimpan.');
+                            router.visit(route('orders.show', order_id));
+                        },
+                    });
+                } else {
+                    toast.error('Midtrans tidak tersedia. Silakan refresh halaman.');
+                    setIsPaymentProcessing(false);
+                }
+            } else {
+                toast.error(response.data.error || 'Gagal membuat pesanan.');
+                setIsPaymentProcessing(false);
+            }
+        } catch (error: unknown) {
+            console.error('Checkout error:', error);
+            if (axios.isAxiosError(error) && error.response?.data?.error) {
+                toast.error(error.response.data.error);
+            } else {
+                toast.error('Terjadi kesalahan. Silakan coba lagi.');
+            }
+            setIsPaymentProcessing(false);
+        }
+    };
+
+    // Initiate Midtrans Snap payment
+    const initiatePayment = async (orderId: number) => {
+        try {
+            const response = await axios.post(route('payment.createToken', { order: orderId }));
+            const { snap_token } = response.data;
+
+            if (snap_token && window.snap) {
+                window.snap.pay(snap_token, {
+                    onSuccess: (result) => {
+                        console.log('Payment success:', result);
+                        toast.success('Pembayaran berhasil!');
+                        router.visit(route('orders.show', orderId));
+                    },
+                    onPending: (result) => {
+                        console.log('Payment pending:', result);
+                        toast.info('Pembayaran sedang diproses. Silakan selesaikan pembayaran Anda.');
+                        router.visit(route('orders.show', orderId));
+                    },
+                    onError: (result) => {
+                        console.error('Payment error:', result);
+                        toast.error('Pembayaran gagal. Silakan coba lagi.');
+                        router.visit(route('orders.show', orderId));
+                    },
+                    onClose: () => {
+                        console.log('Payment popup closed');
+                        toast.info('Anda menutup popup pembayaran. Pesanan Anda tetap tersimpan.');
+                        router.visit(route('orders.show', orderId));
+                    },
+                });
+            } else {
+                toast.error('Midtrans Snap tidak tersedia. Silakan refresh halaman.');
+                setIsPaymentProcessing(false);
+            }
+        } catch (error) {
+            console.error('Failed to create payment token:', error);
+            toast.error('Gagal memulai pembayaran. Silakan coba lagi dari halaman pesanan.');
+            router.visit(route('orders.show', orderId));
+        }
     };
 
     // Step Navigation Handlers
@@ -286,11 +396,12 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
     };
 
     const goToPayment = () => {
+        // Now we skip the payment step and go directly to submit
         if (data.shipping_method.cost === 0) {
             alert("Mohon pilih metode pengiriman.");
             return;
         }
-        setStep('payment');
+        // Stay on shipping step, user will click "Bayar Sekarang" button
     };
 
     const goToAddress = () => setStep('address');
@@ -429,8 +540,12 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                             placeholder="Nama penerima"
                                             value={data.shipping_address.name}
                                             onChange={e => setData('shipping_address', { ...data.shipping_address, name: e.target.value })}
+                                            className={cn(errors['shipping_address.name'] && "border-destructive")}
                                             required
                                         />
+                                        {errors['shipping_address.name'] && (
+                                            <p className="text-xs text-destructive mt-1">{errors['shipping_address.name']}</p>
+                                        )}
                                     </div>
 
                                     <div className="space-y-2">
@@ -440,8 +555,12 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                             placeholder="Jalan, No. Rumah, RT/RW"
                                             value={data.shipping_address.address}
                                             onChange={e => setData('shipping_address', { ...data.shipping_address, address: e.target.value })}
+                                            className={cn(errors['shipping_address.address'] && "border-destructive")}
                                             required
                                         />
+                                        {errors['shipping_address.address'] && (
+                                            <p className="text-xs text-destructive mt-1">{errors['shipping_address.address']}</p>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -463,6 +582,9 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+                                            {errors['shipping_address.province_id'] && (
+                                                <p className="text-xs text-destructive mt-1">{errors['shipping_address.province_id']}</p>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="city">Kota / Kabupaten</Label>
@@ -486,6 +608,9 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+                                            {errors['shipping_address.city_id'] && (
+                                                <p className="text-xs text-destructive mt-1">{errors['shipping_address.city_id']}</p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -496,7 +621,11 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                                 placeholder="Kode Pos"
                                                 value={data.shipping_address.postal_code}
                                                 onChange={e => setData('shipping_address', { ...data.shipping_address, postal_code: e.target.value })}
+                                                className={cn(errors['shipping_address.postal_code'] && "border-destructive")}
                                             />
+                                            {errors['shipping_address.postal_code'] && (
+                                                <p className="text-xs text-destructive mt-1">{errors['shipping_address.postal_code']}</p>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="phone">Nomor Telepon</Label>
@@ -505,8 +634,12 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                                 placeholder="Untuk kurir menghubungi Anda"
                                                 value={data.shipping_address.phone}
                                                 onChange={e => setData('shipping_address', { ...data.shipping_address, phone: e.target.value })}
+                                                className={cn(errors['shipping_address.phone'] && "border-destructive")}
                                                 required
                                             />
+                                            {errors['shipping_address.phone'] && (
+                                                <p className="text-xs text-destructive mt-1">{errors['shipping_address.phone']}</p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -523,19 +656,14 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                         </Card>
 
 
-                        {/* STEP 2: Shipping Method */}
-                        <Card className={cn("border transition-all duration-300", step === 'shipping' ? "ring-2 ring-primary/20 shadow-md" : (step === 'payment' ? "opacity-80" : "opacity-50 grayscale"))}>
+                        {/* STEP 2: Shipping Method & Payment */}
+                        <Card className={cn("border transition-all duration-300", step === 'shipping' ? "ring-2 ring-primary/20 shadow-md" : "opacity-50 grayscale")}>
                             <CardHeader className="pb-3">
                                 <CardTitle className="flex justify-between items-center text-lg">
                                     <span className="flex items-center gap-2">
-                                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold", step === 'shipping' ? "bg-primary text-primary-foreground" : (step === 'payment' ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground"))}>2</div>
-                                        Metode Pengiriman
+                                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold", step === 'shipping' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>2</div>
+                                        Metode Pengiriman & Pembayaran
                                     </span>
-                                    {step === 'payment' && (
-                                        <Button variant="ghost" size="sm" onClick={goToShippingStep} type="button" className="text-primary hover:text-primary/80">
-                                            <Pencil className="h-4 w-4 mr-2" /> Ubah
-                                        </Button>
-                                    )}
                                 </CardTitle>
                             </CardHeader>
                             {step === 'shipping' && (
@@ -552,7 +680,6 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                                 variant="outline"
                                                 className="mt-4"
                                                 onClick={() => {
-                                                    // Retry fetching
                                                     const tempCity = selectedCityId;
                                                     setSelectedCityId('');
                                                     setTimeout(() => setSelectedCityId(tempCity), 100);
@@ -598,78 +725,18 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                             ))}
                                         </RadioGroup>
                                     )}
-                                    <Button
-                                        type="button"
-                                        onClick={goToPayment}
-                                        className="w-full mt-4 h-11"
-                                        disabled={data.shipping_method.cost === 0}
-                                    >
-                                        Lanjut ke Pembayaran
-                                    </Button>
-                                </CardContent>
-                            )}
-                            {step === 'payment' && selectedShippingOption && (
-                                <CardContent className="pb-6 pt-0">
-                                    <div className="flex items-center gap-2 text-sm text-foreground">
-                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                        {selectedShippingOption.courier} - {selectedShippingOption.service} (Rp {selectedShippingOption.cost.toLocaleString('id-ID')})
-                                    </div>
-                                </CardContent>
-                            )}
-                        </Card>
-
-
-                        {/* STEP 3: Payment Method */}
-                        <Card className={cn("border transition-all duration-300", step === 'payment' ? "ring-2 ring-primary/20 shadow-md" : "opacity-50 grayscale")}>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="flex justify-between items-center text-lg">
-                                    <span className="flex items-center gap-2">
-                                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold", step === 'payment' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>3</div>
-                                        Pembayaran
-                                    </span>
-                                </CardTitle>
-                            </CardHeader>
-                            {step === 'payment' && (
-                                <CardContent className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                                    <RadioGroup
-                                        value={data.payment_method}
-                                        onValueChange={(value) => setData('payment_method', value)}
-                                        className="grid grid-cols-1 gap-4"
-                                    >
-                                        {paymentMethods.map((method) => {
-                                            const Icon = getPaymentIcon(method.id);
-                                            return (
-                                                <div key={method.id}>
-                                                    <RadioGroupItem value={method.id} id={`pay-${method.id}`} className="peer sr-only" />
-                                                    <Label
-                                                        htmlFor={`pay-${method.id}`}
-                                                        className="flex items-center gap-4 rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-muted/50 hover:text-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all cursor-pointer"
-                                                    >
-                                                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                                                            <Icon className="h-5 w-5" />
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <p className="font-semibold text-sm">{method.name}</p>
-                                                            <p className="text-xs text-muted-foreground">{method.description}</p>
-                                                        </div>
-                                                        <div className="h-4 w-4 rounded-full border border-primary flex items-center justify-center opacity-0 peer-data-[state=checked]:opacity-100 transition-opacity">
-                                                            <div className="h-2 w-2 rounded-full bg-primary" />
-                                                        </div>
-                                                    </Label>
-                                                </div>
-                                            );
-                                        })}
-                                    </RadioGroup>
-
+                                    {errors['shipping_method'] && (
+                                        <p className="text-sm text-destructive font-medium">{errors['shipping_method']}</p>
+                                    )}
                                     <Button
                                         type="submit"
-                                        disabled={processing || cartItems.length === 0}
-                                        className="w-full lg:hidden h-12 text-base font-bold bg-primary hover:bg-primary/90 mt-8"
+                                        className="w-full mt-4 h-12 text-base font-bold bg-primary hover:bg-primary/90"
+                                        disabled={data.shipping_method.cost === 0 || isPaymentProcessing}
                                     >
-                                        {processing ? (
+                                        {isPaymentProcessing ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Memproses...
+                                                Memproses Pembayaran...
                                             </>
                                         ) : (
                                             `Bayar Rp ${Math.round(total).toLocaleString('id-ID')}`
@@ -779,10 +846,10 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                     <Button
                                         type="submit"
                                         form="checkout-form"
-                                        disabled={!isFormValid || processing || cartItems.length === 0}
+                                        disabled={!isFormValid || isPaymentProcessing || cartItems.length === 0}
                                         className="w-full h-12 text-base font-bold bg-primary hover:bg-primary/90 shadow-sm"
                                     >
-                                        {processing ? (
+                                        {isPaymentProcessing ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                 Memproses...
@@ -793,8 +860,15 @@ export default function CheckoutPage({ cartItems, subtotal, paymentMethods }: Pr
                                     </Button>
                                     {!isFormValid && (
                                         <p className="text-center text-xs text-muted-foreground mt-2">
-                                            Lengkapi data pengiriman & pembayaran untuk melanjutkan.
+                                            Lengkapi data pengiriman untuk melanjutkan pembayaran.
                                         </p>
+                                    )}
+                                    {Object.keys(errors).length > 0 && (
+                                        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mt-4">
+                                            <p className="text-xs text-destructive text-center font-medium">
+                                                Terjadi kesalahan validasi. Mohon periksa kembali data Anda.
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             </CardContent>

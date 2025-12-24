@@ -166,9 +166,15 @@ export default function Show({ order }: PageProps<{ order: Order }>) {
                                                             <div className="font-medium">{item.product?.nama_produk || 'Product'}</div>
                                                             {item.options?.variant && (
                                                                 <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                                                                    {Object.entries(item.options.variant).map(([key, value]) => (
+                                                                    {Object.entries(item.options.variant || {}).map(([key, value]) => (
                                                                         <div key={key}><span className="opacity-70">{key}:</span> {value}</div>
                                                                     ))}
+                                                                </div>
+                                                            )}
+                                                            {item.options?.note && (
+                                                                <div className="mt-2 text-xs italic text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100 flex items-start gap-1.5">
+                                                                    <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                                                    <span>Catatan: {item.options.note}</span>
                                                                 </div>
                                                             )}
                                                         </TableCell>
@@ -400,13 +406,25 @@ export default function Show({ order }: PageProps<{ order: Order }>) {
                                     <div>
                                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Spesifikasi Varian</h3>
                                         <div className="bg-slate-50 rounded-lg p-3 border grid grid-cols-2 gap-2 text-sm">
-                                            {Object.entries(selectedItem.options.variant).map(([key, value]) => (
+                                            {Object.entries(selectedItem.options.variant || {}).map(([key, value]) => (
                                                 <div key={key} className="flex flex-col">
                                                     <span className="text-xs text-slate-400 uppercase">{key}</span>
                                                     <span className="font-medium">{value}</span>
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+                                )}
+
+                                {selectedItem.options?.note && (
+                                    <div className="bg-orange-50 rounded-lg p-4 border border-orange-100 space-y-2">
+                                        <div className="flex items-center gap-2 text-orange-700 font-semibold text-sm">
+                                            <Info className="h-4 w-4" />
+                                            Catatan dari Pelanggan
+                                        </div>
+                                        <p className="text-sm text-orange-900 italic whitespace-pre-wrap">
+                                            "{selectedItem.options.note}"
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -477,6 +495,6 @@ export default function Show({ order }: PageProps<{ order: Order }>) {
                     )}
                 </DialogContent>
             </Dialog>
-        </Layout>
+        </Layout >
     );
 }

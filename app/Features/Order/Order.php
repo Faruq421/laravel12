@@ -22,11 +22,17 @@ class Order extends Model
         'tracking_number',
         'estimated_completion_date',
         'admin_notes',
+        // Midtrans payment fields
+        'snap_token',
+        'midtrans_order_id',
+        'transaction_id',
+        'payment_time',
     ];
 
     protected $casts = [
         'shipping_address' => 'array',
         'estimated_completion_date' => 'date',
+        'payment_time' => 'datetime',
     ];
 
     public function user()

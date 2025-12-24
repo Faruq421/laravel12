@@ -124,11 +124,6 @@ export default function MyOrdersPage() {
                                     <Button asChild variant="outline">
                                         <Link href={route('orders.show', order.id)}>Lihat Detail</Link>
                                     </Button>
-                                    {order.order_status?.toLowerCase() === 'shipped' && (
-                                        <Button className="bg-[#FF6500] hover:bg-[#C40C0C]">
-                                            Lacak Pengiriman
-                                        </Button>
-                                    )}
                                     {order.order_status?.toLowerCase() === 'completed' && (
                                         <>
                                             {(!order.reviews_edited_count || order.reviews_edited_count === 0) && (

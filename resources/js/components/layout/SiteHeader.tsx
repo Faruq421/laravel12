@@ -106,11 +106,11 @@ export default function SiteHeader({ auth }: PageProps) {
                     <NavigationMenu>
                         <NavigationMenuList>
                             <NavigationMenuItem>
-                                <Link href="/" legacyBehavior passHref>
-                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
+                                <NavigationMenuLink asChild>
+                                    <Link href="/" className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
                                         Beranda
-                                    </NavigationMenuLink>
-                                </Link>
+                                    </Link>
+                                </NavigationMenuLink>
                             </NavigationMenuItem>
                             <NavigationMenuItem>
                                 <NavigationMenuTrigger className="text-gray-700 hover:text-primary bg-transparent hover:bg-gray-100 focus:bg-gray-100 data-[active]:bg-gray-100 data-[state=open]:bg-gray-100 text-base font-medium">
@@ -146,18 +146,18 @@ export default function SiteHeader({ auth }: PageProps) {
                                 </NavigationMenuContent>
                             </NavigationMenuItem>
                             <NavigationMenuItem>
-                                <Link href="#" legacyBehavior passHref>
-                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
+                                <NavigationMenuLink asChild>
+                                    <Link href="#" className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
                                         Panduan Cetak
-                                    </NavigationMenuLink>
-                                </Link>
+                                    </Link>
+                                </NavigationMenuLink>
                             </NavigationMenuItem>
                             <NavigationMenuItem>
-                                <Link href="#" legacyBehavior passHref>
-                                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
+                                <NavigationMenuLink asChild>
+                                    <Link href="#" className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-gray-100 text-gray-700 hover:text-primary text-base font-medium")}>
                                         Portofolio
-                                    </NavigationMenuLink>
-                                </Link>
+                                    </Link>
+                                </NavigationMenuLink>
                             </NavigationMenuItem>
                         </NavigationMenuList>
                     </NavigationMenu>
@@ -165,12 +165,12 @@ export default function SiteHeader({ auth }: PageProps) {
 
                 <div className="flex items-center space-x-2 md:space-x-4">
                     <div className="hidden md:block relative">
-                    <Input type="search" placeholder="Cari produk..." className="pl-10 rounded-full" />
-                    {/* Wrapper baru untuk perataan vertikal yang stabil */}
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search className="h-5 w-5 text-gray-400" />
+                        <Input type="search" placeholder="Cari produk..." className="pl-10 rounded-full" />
+                        {/* Wrapper baru untuk perataan vertikal yang stabil */}
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-gray-400" />
+                        </div>
                     </div>
-                </div>
 
                     <CartSheet />
 
@@ -189,7 +189,7 @@ export default function SiteHeader({ auth }: PageProps) {
                                     <div className="text-xs text-gray-500">{user.email}</div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                {user.is_admin && (
+                                {!!user.is_admin && (
                                     <DropdownMenuItem asChild><Link href={route('products.index')}><UserCircle className="mr-2 h-4 w-4" /><span>Admin Dashboard</span></Link></DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem asChild><Link href="#"><UserCircle className="mr-2 h-4 w-4" /><span>Profil Saya</span></Link></DropdownMenuItem>

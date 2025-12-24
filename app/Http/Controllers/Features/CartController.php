@@ -64,6 +64,7 @@ class CartController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
             'variant' => ['nullable', 'array'],
             'design' => ['nullable', 'array'],
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $product = Product::where('id_produk', $request->product_id)->firstOrFail();
@@ -71,8 +72,8 @@ class CartController extends Controller
 
         $designData = $this->processDesignData($request);
 
-        // Generate a unique key for each cart item based on product ID and options
-        $optionsIdentifier = md5(serialize($request->variant) . serialize($designData));
+        // Generate a unique key for each cart item based on product ID, variants, and design
+        $optionsIdentifier = md5(serialize($request->variant) . serialize($designData) . $request->note);
         $cartItemId = $product->id_produk . '-' . $optionsIdentifier;
 
         // Check if item already exists in cart
@@ -92,6 +93,7 @@ class CartController extends Controller
                 'quantity' => $request->quantity,
                 'variant' => $request->variant,
                 'design' => $designData,
+                'note' => $request->note,
             ];
         }
 

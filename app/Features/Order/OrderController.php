@@ -114,6 +114,7 @@ class OrderController extends Controller
 
     /**
      * Store a newly created order from the customer checkout.
+     * Returns JSON with snap_token for Midtrans payment.
      */
     public function store(Request $request)
     {
@@ -131,38 +132,36 @@ class OrderController extends Controller
             'shipping_method.service' => 'required|string',
             'shipping_method.cost' => 'required|integer',
             'shipping_method.etd' => 'nullable|string',
-            'payment_method' => 'required|string|in:bca,credit_card',
             'selected_items' => 'required|array|min:1',
-            'selected_items.*' => 'string', // Array of selected cart item IDs
+            'selected_items.*' => 'string',
         ]);
 
         $allCartItems = session('cart.items', []);
         $selectedItemIds = $validated['selected_items'];
 
-        // 1. Filter keranjang untuk hanya mendapatkan item yang dipilih
+        // 1. Filter cart items
         $itemsToProcess = array_filter($allCartItems, function ($item) use ($selectedItemIds) {
             return in_array($item['id'], $selectedItemIds);
         });
 
         if (empty($itemsToProcess)) {
-            return redirect()->route('checkout.create')->withErrors(['cart' => 'Tidak ada item yang dipilih untuk diproses.']);
+            return response()->json(['error' => 'Tidak ada item yang dipilih untuk diproses.'], 422);
         }
 
-        // 2. Dapatkan harga produk terbaru dari database untuk keamanan
+        // 2. Get product prices from database
         $productIds = array_column($itemsToProcess, 'product_id');
         $productsById = Product::whereIn('id_produk', $productIds)->get()->keyBy('id_produk');
 
-        // 3. Hitung total harga berdasarkan data dari database
+        // 3. Calculate subtotal
         $subtotal = 0;
         foreach ($itemsToProcess as $item) {
             $product = $productsById->get($item['product_id']);
             if ($product) {
-                // Use item price from cart (which includes variant modifiers)
                 $subtotal += $item['price'] * $item['quantity'];
             }
         }
 
-        // 4. Get shipping cost from RajaOngkir data
+        // 4. Get shipping cost
         $shippingCost = $validated['shipping_method']['cost'];
         $shippingMethodName = $validated['shipping_method']['courier'] . ' - ' . $validated['shipping_method']['service'];
 
@@ -183,7 +182,7 @@ class OrderController extends Controller
                     'shipping_address' => $validated['shipping_address'],
                     'shipping_cost' => $shippingCost,
                     'shipping_method' => $shippingMethodName,
-                    'payment_method' => $validated['payment_method'],
+                    'payment_method' => 'midtrans', // Will be updated by webhook
                     'payment_status' => 'unpaid',
                 ]);
 
@@ -194,22 +193,86 @@ class OrderController extends Controller
                         $order->items()->create([
                             'product_id_produk' => $item['product_id'],
                             'quantity' => $item['quantity'],
-                            'price' => $item['price'], // Price from cart (includes variant modifier)
+                            'price' => $item['price'],
                             'options' => [
                                 'variant' => $item['variant'] ?? null,
                                 'design' => $item['design'] ?? null,
+                                'note' => $item['note'] ?? null,
                             ],
                         ]);
                     }
                 }
             });
 
-            // 7. Remove checked out items from cart session
+            // 7. Generate Midtrans Snap Token
+            \Midtrans\Config::$serverKey = config('midtrans.server_key');
+            \Midtrans\Config::$isProduction = config('midtrans.is_production');
+            \Midtrans\Config::$isSanitized = config('midtrans.is_sanitized');
+            \Midtrans\Config::$is3ds = config('midtrans.is_3ds');
+
+            $order->load('items.product');
+
+            $transactionDetails = [
+                'order_id' => 'ORDER-' . $order->id . '-' . time(),
+                'gross_amount' => (int) $order->total_price,
+            ];
+
+            $customerDetails = [
+                'first_name' => $validated['shipping_address']['name'],
+                'email' => auth()->user()->email,
+                'phone' => $validated['shipping_address']['phone'],
+            ];
+
+            $itemDetails = [];
+            foreach ($order->items as $item) {
+                $itemDetails[] = [
+                    'id' => $item->product_id_produk,
+                    'price' => (int) $item->price,
+                    'quantity' => $item->quantity,
+                    'name' => substr($item->product->nama_produk ?? 'Product', 0, 50),
+                ];
+            }
+
+            // Add shipping cost
+            if ($order->shipping_cost > 0) {
+                $itemDetails[] = [
+                    'id' => 'SHIPPING',
+                    'price' => (int) $order->shipping_cost,
+                    'quantity' => 1,
+                    'name' => 'Biaya Pengiriman',
+                ];
+            }
+
+            // Add tax
+            $taxAmount = (int) round($subtotal * 0.11);
+            if ($taxAmount > 0) {
+                $itemDetails[] = [
+                    'id' => 'TAX',
+                    'price' => $taxAmount,
+                    'quantity' => 1,
+                    'name' => 'PPN (11%)',
+                ];
+            }
+
+            $transactionPayload = [
+                'transaction_details' => $transactionDetails,
+                'customer_details' => $customerDetails,
+                'item_details' => $itemDetails,
+            ];
+
+            $snapToken = \Midtrans\Snap::getSnapToken($transactionPayload);
+
+            // Save snap token to order
+            $order->update([
+                'snap_token' => $snapToken,
+                'midtrans_order_id' => $transactionDetails['order_id'],
+            ]);
+
+            // 8. Remove checked out items from cart
             $remainingCartItems = array_filter($allCartItems, function ($item) use ($selectedItemIds) {
                 return !in_array($item['id'], $selectedItemIds);
             });
 
-            // Recalculate cart subtotal
             $newSubtotal = array_reduce($remainingCartItems, function ($carry, $item) {
                 return $carry + ($item['price'] * $item['quantity']);
             }, 0);
@@ -219,12 +282,20 @@ class OrderController extends Controller
                 'subtotal' => $newSubtotal,
             ]]);
 
-            // 8. Redirect to order detail/success page
-            return redirect()->route('orders.my')->with('message', 'Pesanan Anda berhasil dibuat!');
+            // 9. Return JSON with snap token
+            return response()->json([
+                'success' => true,
+                'order_id' => $order->id,
+                'snap_token' => $snapToken,
+                'message' => 'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran.',
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Order creation failed: ' . $e->getMessage());
-            return redirect()->route('checkout.create')->withErrors(['error' => 'Terjadi kesalahan saat membuat pesanan. Silakan coba lagi.']);
+            return response()->json([
+                'error' => 'Terjadi kesalahan saat membuat pesanan. Silakan coba lagi.',
+                'details' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
     }
 
