@@ -1,21 +1,36 @@
 <?php
 
+use App\Features\Product\ProductController;
+use App\Http\Controllers\Features\CartController;
+use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('welcome');
-})->name('home');
+Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
+Route::get('/api/products/{product:slug}', [ProductController::class, 'quickView'])->name('products.quickView');
+Route::get('/api/cart/{cartItemId}', [CartController::class, 'getItemDetails'])->name('cart.itemDetails');
+
+// Rute untuk publik (tidak perlu login)
+
+// Rute untuk Keranjang Belanja
+Route::prefix('cart')->name('cart.')->group(function () {
+    Route::get('/', [CartController::class, 'index'])->name('index');
+    Route::post('/', [CartController::class, 'store'])->name('store');
+    Route::patch('/{cartItemId}', [CartController::class, 'update'])->name('update');
+    Route::delete('/{cartItemId}', [CartController::class, 'destroy'])->name('destroy');
+});
+
+// Rute untuk Halaman Toko "Produk & Jasa"
+Route::get('/produk-jasa', [ProductController::class, 'shopIndex'])
+     ->name('shop.index');
+
+// Rute khusus Admin
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/dashboard', function () {
+        return \Inertia\Inertia::render('dashboard');
     })->name('dashboard');
 });
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
 
-foreach (glob(base_path('routes/features/*.php')) as $route) {
-    require $route;
-}
+require __DIR__.'/auth.php';
+require __DIR__.'/settings.php';

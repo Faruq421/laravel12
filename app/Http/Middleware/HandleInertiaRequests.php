@@ -36,16 +36,23 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
-
-        return [
-            ...parent::share($request),
-            'name' => config('app.name'),
-            'quote' => ['message' => trim($message), 'author' => trim($author)],
+        return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user(),
+                'user' => fn() => $request->user() ? $request->user()->only('id', 'name', 'email', 'initials', 'role') : null,
             ],
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-        ];
+            'flash' => [
+                'message' => fn() => $request->session()->get('message'),
+            ],
+            'cart' => function () {
+                $cart = session('cart', ['items' => [], 'subtotal' => 0]);
+                // Mengubah logika untuk menghitung jumlah item unik, bukan total kuantitas
+                $quantity = is_array($cart['items']) ? count($cart['items']) : 0;
+                return [
+                    'items' => $cart['items'],
+                    'subtotal' => $cart['subtotal'],
+                    'quantity' => $quantity,
+                ];
+            },
+        ]);
     }
 }

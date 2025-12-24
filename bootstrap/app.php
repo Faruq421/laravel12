@@ -12,6 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            $featuresDir = base_path('routes/features');
+            if (file_exists($featuresDir)) {
+                foreach (scandir($featuresDir) as $file) {
+                    if (pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+                        Route::middleware('web')->group(base_path('routes/features/'.$file));
+                    }
+                }
+            }
+        }
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
@@ -20,6 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+        ]);
+
+        $middleware->alias([
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

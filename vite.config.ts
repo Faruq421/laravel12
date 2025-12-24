@@ -11,7 +11,9 @@ export default defineConfig({
             ssr: 'resources/js/ssr.tsx',
             refresh: true,
         }),
-        react(),
+        react({
+            fastRefresh: false,
+        }),
         tailwindcss(),
         wayfinder({
             formVariants: true,
@@ -19,5 +21,8 @@ export default defineConfig({
     ],
     esbuild: {
         jsx: 'automatic',
+    },
+    server: {
+        host: '127.0.0.1',
     },
 });

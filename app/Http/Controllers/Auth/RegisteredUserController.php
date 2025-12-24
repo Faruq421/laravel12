@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Features\Customer\Customer;
 
 class RegisteredUserController extends Controller
 {
@@ -20,6 +21,8 @@ class RegisteredUserController extends Controller
      */
     public function create(): Response
     {
+        // Path ini harus sesuai dengan lokasi file Register.tsx Anda
+        // Jika file Anda ada di resources/js/Pages/Auth/Register.tsx, maka path ini sudah benar.
         return Inertia::render('auth/register');
     }
 
@@ -32,7 +35,7 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -42,10 +45,15 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Pastikan relasi 'customer' sudah didefinisikan di dalam model User (App\Models\User.php)
+        $user->customer()->create();
+
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // --- PERBAIKAN ---
+        // Mengarahkan ke rute yang bernama 'welcome', yang akan menampilkan halaman utama Anda.
+        return redirect('/');
     }
 }

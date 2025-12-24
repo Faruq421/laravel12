@@ -42,6 +42,14 @@
         @routes
         @viteReactRefresh
         @vite(['resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
+        
+        {{-- Midtrans Snap JS - Load based on environment --}}
+        @if(config('midtrans.is_production'))
+            <script type="text/javascript" src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}"></script>
+        @else
+            <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}"></script>
+        @endif
+        
         @inertiaHead
     </head>
     <body class="font-sans antialiased">

@@ -38,6 +38,7 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    role?: string; // e.g. 'admin', 'customer'
     [key: string]: unknown; // This allows for additional properties...
 }
 
@@ -49,7 +50,7 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
  * Mendefinisikan struktur objek Paginasi dari Laravel.
  * 'T' adalah placeholder untuk tipe data yang dipaginasi (misal: Product, User, dll).
  */
-export interface Pagination<T> {
+export interface PaginatedResponse<T> {
     data: T[];
     from: number;
     to: number;
